@@ -1,0 +1,33 @@
+<% if signed_in? %>
+	<table class="front" summary="For signed-in users">
+		<tr>
+			<td class="main">
+			</td>
+			<td class="sidebar round">
+				<%= render 'shared/user_info' %>
+			</td>
+		</tr>
+	</table>
+<% else %>
+	<!-- Video startup for home page splash -->
+	<video id="splash_video" class="video-js vjs-default-skin"
+			height="264" width = "636"
+			preload="auto"
+	        poster="http://video-js.zencoder.com/oceans-clip.png">
+
+			<!-- multiple video formats  -->
+			<%= javascript_include_tag 'videoplayer' %>
+			<source src="http://video-js.zencoder.com/oceans-clip.webm" type='video/webm' />  
+			<source src="http://video-js.zencoder.com/oceans-clip.mp4" type='video/mp4' />  
+			<source src="http://video-js.zencoder.com/oceans-clip.ogv" type='video/ogg' />  
+			Your browser doesn't support the 'video' tag
+	</video>
+	<h1><br />Seriously.</h1>
+	<p>
+		Your time is valuable.  Don't let other people waste it.
+	</p>
+	<%= link_to "Sign up now.", signup_path, :class => "signup_button round" %>
+<% end %>
+
+<!-- Disabled code
+-->
