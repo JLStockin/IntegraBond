@@ -10,7 +10,8 @@ describe "Users" do
 			it "should not make a new user" do
 				lambda do
 					visit signup_path
-					fill_in :user_name,		:with => ""
+					fill_in :user_first_name,		:with => ""
+					fill_in :user_last_name,		:with => ""
 					fill_in :user_email,	:with => ""
 					fill_in :user_password, :with => ""
 					fill_in :user_password_confirmation, :with => ""
@@ -26,7 +27,8 @@ describe "Users" do
 			it "should make a new user" do
 				lambda do
 					visit signup_path
-					fill_in :user_name,						:with => "Example User"
+					fill_in :user_first_name,				:with => "Example"
+					fill_in :user_last_name,				:with => "User"
 					fill_in :user_email,					:with => "user@example.com"
 					fill_in :user_password,					:with => "foobar"
 					fill_in :user_password_confirmation,	:with => "foobar"

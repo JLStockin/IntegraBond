@@ -1,3 +1,5 @@
 class Evidence < ActiveRecord::Base
-  attr_accessible :description, :event_id, :party_id, :source, :type
+  attr_accessible :description, :source, :evidence_type
+
+  belongs_to	:obligation
 end

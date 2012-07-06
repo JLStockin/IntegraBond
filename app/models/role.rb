@@ -1,6 +1,8 @@
 class Role < ActiveRecord::Base
-  attr_accessible :clause_id, :name
+	attr_accessible :name
 
-  belongs_to :clause
+	has_many	:clause_role
+	has_many	:clauses, :through => :clause_role
 
+	validates	:name,				presence:	true
 end

@@ -3,20 +3,20 @@ require 'spec_helper'
 describe User do
 	
 	before(:each) do
-		@attr = {
-			:name 						=> "Example User",
-			:email 						=> "user@example.com",
-			:password					=> "foobar",
-			:password_confirmation		=> "foobar"
-		}
+		@attr = FactoryGirl.attributes_for(:user)
 	end
 
 	it "should create a new instance given valid attributes" do
 		User.create!(@attr)
 	end
 
-	it "should require a name" do
-		no_name_user = User.new(@attr.merge(:name => ""))
+	it "should require a first name" do
+		no_name_user = User.new(@attr.merge(:first_name => ""))
+		no_name_user.should_not be_valid
+	end
+
+	it "should require a last name" do
+		no_name_user = User.new(@attr.merge(:last_name => ""))
 		no_name_user.should_not be_valid
 	end
 
@@ -25,9 +25,15 @@ describe User do
 		no_email_user.should_not be_valid
 	end
 
-	it "should reject names that are too long (>50 chars)" do
-		long_name = "a" * 51
-		long_name_user = User.new(@attr.merge(:name => long_name))
+	it "should reject first names that are too long (>50 chars)" do
+		long_first_name = "a" * 51
+		long_name_user = User.new(@attr.merge(:first_name => long_first_name))
+		long_name_user.should_not be_valid
+	end
+
+	it "should reject last names that are too long (>50 chars)" do
+		long_last_name = "b" * 51
+		long_name_user = User.new(@attr.merge(:last_name => long_last_name))
 		long_name_user.should_not be_valid
 	end
 
@@ -64,6 +70,10 @@ describe User do
 
 	# Password testing
 	describe "password validations" do
+		before(:each) do
+			@attr = FactoryGirl.attributes_for(:user)
+		end
+
 		it "should require a password" do
 			User.new(@attr.merge(
 				:password 				=> "",
@@ -72,8 +82,7 @@ describe User do
 		end
 
 		it "should require a matching password confirmation" do
-			User.new(@attr.merge(:password_confirmation => "invalid"))
-				.should_not be_valid
+			User.new(@attr.merge(:password_confirmation => "invalid")).should_not be_valid
 		end
 
 		it "should reject short passwords" do
@@ -84,7 +93,7 @@ describe User do
 			)
 			User.new(hash).should_not be_valid
 		end
-		it "should reject log passwords" do
+		it "should reject long passwords" do
 			long = "a" * 41 
 			hash = @attr.merge(
 				:password => long,

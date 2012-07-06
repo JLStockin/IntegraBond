@@ -1,5 +1,4 @@
 require 'spec_helper'
-require 'factories'
 
 describe UsersController do
   	render_views
@@ -17,13 +16,15 @@ describe UsersController do
 		describe "for signed-in users" do
 
 			before(:each) do
-				@user = test_sign_in(Factory(:user))
-				second = Factory(:user, :email => "another@example.com")
-				third = Factory(:user, :email => "another@example.net")
+				@user = test_sign_in(FactoryGirl.create(:user))
+				second = FactoryGirl.create(:user, :email => "another@example.com")
+				third = FactoryGirl.create(:user, :email => "another@example.net")
 				@users = [@user, second, third]
 				30.times do
-					@users << Factory(	:user, :name => Factory.next(:name),
-										:email => Factory.next(:email))
+					@users << FactoryGirl.create(	:user,
+						:first_name => FactoryGirl.generate(:first_name),
+						:last_name => FactoryGirl.generate(:last_name),
+						:email => FactoryGirl.generate(:email))
 				end
 			end
 
@@ -40,7 +41,8 @@ describe UsersController do
 			it "should have an element for each user" do
 				get :index
 				@users[0..2].each do |user|
-					response.should have_selector("li", :content => user.name)
+					response.should have_selector("li", :content => user.first_name)
+					response.should have_selector("li", :content => user.last_name)
 				end
 			end
 
@@ -57,7 +59,7 @@ describe UsersController do
 	describe "GET 'show'" do
 
 		before(:each) do
-			@user = Factory.create(:user)
+			@user = FactoryGirl.create(:user)
 		end
 
 		it "should be successful" do
@@ -72,17 +74,21 @@ describe UsersController do
 
   		it "should have the right title" do
 			get :show, :id => @user.id
-			response.should have_selector("title", :content => @user.name) 
+			response.should have_selector("title", :content => @user.first_name) 
+			response.should have_selector("title", :content => @user.last_name) 
   		end
 
   		it "should include the user's name" do
 			get :show, :id => @user.id
-			response.should have_selector("h1", :content => @user.name) 
+			response.should have_selector("h1", :content => \
+				"#{@user.first_name} #{@user.last_name}") 
   		end
 
   		it "should have a profile image" do
 			get :show, :id => @user.id
-			response.should have_selector('img', :alt => @user.name, :class => 'gravatar') 
+			response.should have_selector('img',
+				:alt => "#{@user.first_name} #{@user.last_name}",
+				:class => 'gravatar') 
   		end
 
 	end
@@ -90,7 +96,7 @@ describe UsersController do
 	describe "GET 'new'" do
 
 		it "should deny access to 'new' for signed-in users" do
-			@user = test_sign_in(Factory(:user))
+			@user = test_sign_in(FactoryGirl.create(:user))
 			get :new
 			response.should redirect_to(root_path)
 		end
@@ -107,11 +113,15 @@ describe UsersController do
 				response.should have_selector("title", :content => "Sign up")
 			end
 
-			it "should have a name field" do
+			it "should have a first_name field" do
 				get :new
-				response.should have_selector("input[name='user[name]'][type='text']")
+				response.should have_selector("input[name='user[first_name]'][type='text']")
 			end
 
+			it "should have a last_name field" do
+				get :new
+				response.should have_selector("input[name='user[last_name]'][type='text']")
+			end
 			it "should have an email field" do
 				get :new
 				response.should have_selector("input[name='user[email]'][type='text']")
@@ -133,11 +143,12 @@ describe UsersController do
 	describe "POST 'create'" do
 
 		it "should deny access to signed-in users" do
-			@attr = {	:name => "",
+			@attr = {	:first_name => "",
+						:last_name => "",
 						:email => "", :password => "",
 						:password_confirmation => "" 
 			}
-			@user = test_sign_in(Factory(:user))
+			@user = test_sign_in(FactoryGirl.create(:user))
 			post :create, :user => @attr
 			response.should redirect_to(root_path)
 		end
@@ -145,7 +156,8 @@ describe UsersController do
 		describe "failure" do
 
 			before(:each) do
-				@attr = {	:name => "",
+				@attr = {	:first_name => "",
+							:last_name => "",
 							:email => "", :password => "",
 							:password_confirmation => "" 
 				}
@@ -170,7 +182,8 @@ describe UsersController do
 
 		describe "success" do
 			before(:each) do
-				@attr = {	:name => "New User",
+				@attr = {	:first_name => "New",
+							:last_name => "User",
 							:email => "user@example.com",
 							:password => "foobar",
 							:password_confirmation => "foobar"
@@ -205,7 +218,7 @@ describe UsersController do
 	describe "GET 'edit'" do
 
 		before(:each) do
-			@user = Factory(:user)
+			@user = FactoryGirl.create(:user)
 			test_sign_in(@user)
 		end
 
@@ -230,13 +243,14 @@ describe UsersController do
 	describe "PUT 'update'" do
 
 		before(:each) do
-			@user = test_sign_in(Factory(:user))
+			@user = test_sign_in(FactoryGirl.create(:user))
 		end
 
 		describe "failure" do
 
 			before(:each) do
-				@attr = {	:email => "", :name => "", :password => "",
+				@attr = {	:email => "", :first_name => "", :last_name => "",
+							:password => "",
 							:password_confirmation => "" }
 			end
 
@@ -254,14 +268,16 @@ describe UsersController do
 		describe "success" do
 
 			before(:each) do
-				@attr = {	:name => "New Name", :email => "user@example.org",
-							:password => "barbaz", :password_confirmation => "barbaz" }
+				@attr = {	:first_name => "New", :last_name => "Name",
+							:email => "user@example.org", :password => "barbaz",
+							:password_confirmation => "barbaz" }
 			end
 
 			it "should change the user's attributes" do
 				put :update, :id => @user, :user => @attr
 				@user.reload
-				@user.name.should  == @attr[:name]
+				@user.first_name.should  == @attr[:first_name]
+				@user.last_name.should  == @attr[:last_name]
 				@user.email.should == @attr[:email]
 			end
 
@@ -280,7 +296,7 @@ describe UsersController do
 	describe "authentication of edit/update pages" do
 
 		before(:each) do
-			@user = Factory(:user)
+			@user = FactoryGirl.create(:user)
 		end
 
 		describe "for non-signed-in users" do
@@ -299,7 +315,7 @@ describe UsersController do
 		describe "for signed-in users" do
 
 			before(:each) do
-				wrong_user = Factory(:user, :email => "user@example.net")
+				wrong_user = FactoryGirl.create(:user, :email => "user@example.net")
 				test_sign_in(wrong_user)
 			end
 
@@ -318,7 +334,7 @@ describe UsersController do
 	describe "DELETE 'destroy'" do
 
 		before(:each) do
-			@user = Factory(:user)
+			@user = FactoryGirl.create(:user)
 		end
 
 		describe "as a non-signed-in user" do
@@ -339,7 +355,7 @@ describe UsersController do
 		describe "as an admin user" do
 
 			before(:each) do
-				admin = Factory(:user, :email => "admin@example.com", :admin => true)
+				admin = FactoryGirl.create(:user, :email => "admin@example.com", :admin => true)
 				test_sign_in(admin)
 			end
 

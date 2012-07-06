@@ -3,6 +3,7 @@ ENV["RAILS_ENV"] ||= 'test'
 require File.expand_path("../../config/environment", __FILE__)
 require 'rspec/rails'
 require 'rspec/autorun'
+require 'factory_girl_rails'
 
 # Requires supporting ruby files with custom matchers and macros, etc,
 # in spec/support/ and its subdirectories.
@@ -39,6 +40,15 @@ RSpec.configure do |config|
 		fill_in :email,		:with => user.email
 		fill_in :password,	:with => user.password
 		click_button
+	end
+
+	def create_test_user
+		user = User.new(FactoryGirl.attributes_for(:user))
+		user.password = "foobar"
+		user.password_confirmation = "foobar"
+		user.account = Account.new(:name => "default")
+		user.save!
+		user
 	end
 
 end

@@ -1,16 +1,21 @@
 
 class User < ActiveRecord::Base
 	require 'digest'
+	has_one :account, :inverse_of => :user, :dependent => :destroy
+	has_many :clauses
+	has_many :contracts
 
 	attr_accessor :password
-	attr_accessible :email, :name, :password, :password_confirmation
+	attr_accessible :email, :first_name, :last_name, :password, :password_confirmation
+	accepts_nested_attributes_for :account
 
-	has_many :accounts
 	
 	EMAIL_REGEX = /\A[\w+\-.]+@[a-z\d\-.]+\.[a-z]+\z/i
 
-	validates :name, 	:presence => true,
- 						:length => { :maximum => 50 }
+	validates :first_name, 	:presence => true,
+							:length => { :maximum => 50 }
+	validates :last_name, 	:presence => true,
+							:length => { :maximum => 50 }
 
   	validates :email, 	:presence => true,
 						:format => { :with => User::EMAIL_REGEX },
@@ -21,6 +26,10 @@ class User < ActiveRecord::Base
 							:length				=> { :within => 6..40 }
 
 	before_save :encrypt_password
+
+	def to_s
+		"email: #{email}, first_name: #{first_name}, last_name = #{last_name}, passwd: #{password}, account: #{account}"
+	end
 
 	# Return true if the user's passsword matches the submitted password.
 	def has_password?(submitted_password)

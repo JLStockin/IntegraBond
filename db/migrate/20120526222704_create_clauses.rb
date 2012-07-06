@@ -1,11 +1,10 @@
 class CreateClauses < ActiveRecord::Migration
   def change
     create_table :clauses do |t|
+	  t.string :name
+      t.integer :author_id
       t.string :ruby_module
-      t.string :author
-      t.string :state
-      t.string :relative_t1
-      t.string :relative_t2
+      t.string :relative_milestones
 
       t.timestamps
     end

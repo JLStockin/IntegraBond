@@ -3,12 +3,12 @@ class CreateObligations < ActiveRecord::Migration
     create_table :obligations do |t|
       t.integer :transaction_id
       t.integer :clause_id
-      t.integer :t1
-      t.integer :t2
+	  t.string  :state
+	  t.string	:milestones
 
       t.timestamps
     end
 
-	create_index :obligations, :transaction_id
+	add_index :obligations, :transaction_id
   end
 end

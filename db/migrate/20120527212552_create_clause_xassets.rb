@@ -7,7 +7,7 @@ class CreateClauseXassets < ActiveRecord::Migration
       t.timestamps
     end
 
-	create_index :clause_xassets, :clause_id
-	create_index :clause_xassets, :xasset_id
+	add_index :clause_xassets, :clause_id
+	add_index :clause_xassets, :xasset_id
   end
 end

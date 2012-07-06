@@ -11,7 +11,7 @@ class UsersController < ApplicationController
 
 	def show
 		@user = User.find(params[:id])
-		@title = @user.name
+		@title = "#{@user.first_name} #{@user.last_name}"
 	end
 
 	def new
@@ -30,6 +30,8 @@ class UsersController < ApplicationController
 			return
 		else
 			@user = User.new(params[:user])
+			@account = @user.build_account() # Need to extract the account params
+			@account.user_id = @user.id		# Needed?
 
 			if @user.save
 				sign_in @user
@@ -59,7 +61,7 @@ class UsersController < ApplicationController
 
 	def destroy
 		user = User.find(params[:id])
-		name = user.name
+		name = user.first_name; name += " "; name += user.last_name
 		user.destroy
 		flash[:success] = "User #{name} destroyed"
 		redirect_to(users_path)

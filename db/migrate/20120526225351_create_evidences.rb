@@ -1,7 +1,7 @@
 class CreateEvidences < ActiveRecord::Migration
   def change
     create_table :evidences do |t|
-      t.string :type
+      t.string :evidence_type
       t.string :source
       t.string :description
       t.integer :obligation_id

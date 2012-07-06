@@ -2,6 +2,7 @@ class CreateAccounts < ActiveRecord::Migration
   def change
     create_table :accounts do |t|
       t.integer :user_id
+      t.string :name
       t.float :available_funds
       t.float :total_funds
 

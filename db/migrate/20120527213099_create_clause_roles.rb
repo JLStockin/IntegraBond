@@ -7,7 +7,7 @@ class CreateClauseRoles < ActiveRecord::Migration
       t.timestamps
     end
 
-	create_index :clause_roles, :clause_id
-	create_index :clause_roles, :role_id
+	add_index :clause_roles, :clause_id
+	add_index :clause_roles, :role_id
   end
 end

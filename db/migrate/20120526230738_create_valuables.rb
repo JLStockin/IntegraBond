@@ -5,9 +5,9 @@ class CreateValuables < ActiveRecord::Migration
       t.string :more_description
       t.integer :xasset_id
       t.integer :transaction_id
-      t.integer :user_who_owns_id
-      t.integer :user_who_will_own_id
-      t.integer :user_who_now_holds_id
+      t.integer :grantee
+      t.integer :grantor
+#      t.integer :trustee
 
       t.timestamps
     end

@@ -7,7 +7,7 @@ class CreateObligationValuables < ActiveRecord::Migration
       t.timestamps
     end
 
-	create_index :obligation_valuables, :obligation_id
-	create_index :obligation_valuables, :valuable_id
+	add_index :obligation_valuables, :obligation_id
+	add_index :obligation_valuables, :valuable_id
   end
 end

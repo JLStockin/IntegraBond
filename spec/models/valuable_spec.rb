@@ -1,5 +1,12 @@
 require 'spec_helper'
 
 describe Valuable do
-  pending "add some examples to (or delete) #{__FILE__}"
+	before(:each) do
+		@attr = FactoryGirl.attributes_for(:valuable)
+	end
+
+	it "should create a new instance given valid attributes" do
+		@valuable = Valuable.create!(@attr) 
+	end
+
 end
