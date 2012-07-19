@@ -6,7 +6,6 @@ gem 'sass-rails'
 gem 'gravatar_image_tag'
 gem 'will_paginate'
 gem 'thin', '~>1.3.1'
-gem "eventmachine", "1.0.0.beta.4.1"
 
 # Bundle edge Rails instead:
 # gem 'rails', :git => 'git://github.com/rails/rails.git'
@@ -45,6 +44,8 @@ group :production do
 end
 
 gem 'jquery-rails'
+
+gem 'state_machine'
 
 # To use ActiveModel has_secure_password
 # gem 'bcrypt-ruby', '~> 3.0.0'

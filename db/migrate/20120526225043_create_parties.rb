@@ -2,7 +2,7 @@ class CreateParties < ActiveRecord::Migration
   def change
     create_table :parties do |t|
       t.integer :transaction_id
-      t.integer :role_id
+      t.string	:role
       t.integer :user_id
 
       t.timestamps

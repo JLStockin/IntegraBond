@@ -1,15 +1,9 @@
 class Valuable < ActiveRecord::Base
-	attr_accessible :description, :more_description
+	attr_accessible :description, :more_description, :xasset
 
-	belongs_to	:xasset
-	belongs_to	:grantee, :class_name => :User
-	belongs_to	:grantor, :class_name => :User
-	#belongs_to	:trustee, :class_name => :User
-
-	has_many	:obligation_valuable
-	has_many	:obligations, :through => :obligation_valuable, :class_name => :Obligation
+	belongs_to	:transaction
 
 	def to_s
-		"xasset = #{xasset},  obligations = #{obligations}"
+		"#{description} (participates as #{xasset} in #{transaction})"
 	end
 end

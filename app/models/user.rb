@@ -1,24 +1,24 @@
 
 class User < ActiveRecord::Base
 	require 'digest'
+
+	EMAIL_REGEX = /^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,4})$/i
+
 	has_one :account, :inverse_of => :user, :dependent => :destroy
-	has_many :clauses
-	has_many :contracts
+	has_many :transactions
 
 	attr_accessor :password
 	attr_accessible :email, :first_name, :last_name, :password, :password_confirmation
 	accepts_nested_attributes_for :account
 
 	
-	EMAIL_REGEX = /\A[\w+\-.]+@[a-z\d\-.]+\.[a-z]+\z/i
-
 	validates :first_name, 	:presence => true,
 							:length => { :maximum => 50 }
 	validates :last_name, 	:presence => true,
 							:length => { :maximum => 50 }
 
   	validates :email, 	:presence => true,
-						:format => { :with => User::EMAIL_REGEX },
+						:format => { :with => EMAIL_REGEX },
 						:uniqueness => { :case_sensitive => false }
 
 	validates :password,	:presence			=> 	true,
@@ -28,7 +28,18 @@ class User < ActiveRecord::Base
 	before_save :encrypt_password
 
 	def to_s
-		"email: #{email}, first_name: #{first_name}, last_name = #{last_name}, passwd: #{password}, account: #{account}"
+		ret = "email: #{email}, first_name: #{first_name}, last_name = #{last_name}, " \
+			+ "passwd: #{password}, account: #{account}"
+		ret
+	end
+
+	# Create a new user's account
+	def do_account
+		self.create_account(name: "default")
+		account = self.account
+		account.available_funds = 0
+		account.total_funds = 0
+		account.save
 	end
 
 	# Return true if the user's passsword matches the submitted password.

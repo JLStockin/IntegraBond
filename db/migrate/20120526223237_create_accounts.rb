@@ -3,8 +3,8 @@ class CreateAccounts < ActiveRecord::Migration
     create_table :accounts do |t|
       t.integer :user_id
       t.string :name
-      t.float :available_funds
-      t.float :total_funds
+      t.integer :available_funds
+      t.integer :total_funds
 
       t.timestamps
     end
