@@ -1,4 +1,6 @@
 IntegraBond::Application.routes.draw do
+  resources :xactions
+
 #	get "sessions/new"
 
 	resources :users

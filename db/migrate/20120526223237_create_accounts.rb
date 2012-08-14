@@ -3,8 +3,9 @@ class CreateAccounts < ActiveRecord::Migration
     create_table :accounts do |t|
       t.integer :user_id
       t.string :name
-      t.integer :available_funds
-      t.integer :total_funds
+      t.integer :funds_cents,		:default => 0, :null => false
+      t.integer :hold_funds_cents,	:default => 0, :null => false
+	  t.string	:funds_currency
 
       t.timestamps
     end

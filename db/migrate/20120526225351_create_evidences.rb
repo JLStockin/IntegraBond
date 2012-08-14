@@ -2,9 +2,9 @@ class CreateEvidences < ActiveRecord::Migration
 	def change
 		create_table :evidences do |t|
 			t.integer	:transaction_id
-			t.string	:evidence_type
-			t.string	:source
-			t.string	:description
+			t.string	:hash
+			t.string	:description_short
+			t.string	:description_long
 
 			t.timestamps
 		end

@@ -7,7 +7,7 @@ class CreateTransactions < ActiveRecord::Migration
       t.string		:role_of_origin
 	  t.string		:milestones	# free form hash describing important DateTimes
 	  t.string		:machine_state
-	  t.string		:fault	# free form hash describing outcome
+	  t.string		:transaction_params	# free form hash
 
       t.timestamps
     end

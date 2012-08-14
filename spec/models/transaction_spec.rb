@@ -10,14 +10,16 @@ describe Transaction do
 	it "should have found contract(s)" do
 		contract.should_not be_nil
 	end
-	it "return true for valid_contract_type? with a valid contract" do
+
+	it "returns true for valid_contract_type? with a valid contract" do
 		Transaction.valid_contract_type?(contract).should be_true
 	end
-	it "return false for valid_contract_type? for an invalid contract" do
+
+	it "returns false for valid_contract_type? for an invalid contract" do
 		Transaction.valid_contract_type?("CrudCrudCrud").should be_false
 	end
 
-	context ": class methods for contracts" do
+	describe ": class methods for contracts" do
 
 		@contracts = Transaction.contracts
 
@@ -36,9 +38,15 @@ describe Transaction do
 
 		@contracts.each.should do |contract|
 
-			@contract = contract
-			@contract_name = contract.to_s
-			@transaction = new_test_transaction(contract_name)
+			before(:each) do
+				@contract = contract
+				@contract_name = contract.to_s
+				@transaction = new_test_transaction(contract_name)
+				@transaction.roles.each do |role_sym|
+					role_factory_name = role_sym.to_s + "_party"
+					party = FactoryGirl.create(role_sym)
+				end
+			end
 
 			it "should have a name" do
 				@transaction.should respond_to(:name)

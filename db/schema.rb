@@ -11,26 +11,39 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20120527222456) do
+ActiveRecord::Schema.define(:version => 20120810012222) do
 
   create_table "accounts", :force => true do |t|
     t.integer  "user_id"
     t.string   "name"
-    t.integer  "available_funds"
-    t.integer  "total_funds"
-    t.datetime "created_at",      :null => false
-    t.datetime "updated_at",      :null => false
+    t.integer  "funds_cents",      :default => 0, :null => false
+    t.integer  "hold_funds_cents", :default => 0, :null => false
+    t.string   "funds_currency"
+    t.datetime "created_at",                      :null => false
+    t.datetime "updated_at",                      :null => false
   end
 
   add_index "accounts", ["user_id"], :name => "index_accounts_on_user_id"
 
-  create_table "evidences", :force => true do |t|
+  create_table "disputes", :force => true do |t|
     t.integer  "transaction_id"
-    t.string   "evidence_type"
-    t.string   "source"
-    t.string   "description"
+    t.string   "claimant"
+    t.string   "counterparty"
+    t.text     "allegation"
+    t.text     "response"
     t.datetime "created_at",     :null => false
     t.datetime "updated_at",     :null => false
+  end
+
+  add_index "disputes", ["transaction_id"], :name => "index_disputes_on_transaction_id"
+
+  create_table "evidences", :force => true do |t|
+    t.integer  "transaction_id"
+    t.string   "hash"
+    t.string   "description_short"
+    t.string   "description_long"
+    t.datetime "created_at",        :null => false
+    t.datetime "updated_at",        :null => false
   end
 
   add_index "evidences", ["transaction_id"], :name => "index_evidences_on_transaction_id"
@@ -39,6 +52,9 @@ ActiveRecord::Schema.define(:version => 20120527222456) do
     t.integer  "transaction_id"
     t.string   "role"
     t.integer  "user_id"
+    t.boolean  "is_bonded"
+    t.integer  "bound_amount"
+    t.integer  "fees_amount"
     t.datetime "created_at",     :null => false
     t.datetime "updated_at",     :null => false
   end
@@ -62,7 +78,7 @@ ActiveRecord::Schema.define(:version => 20120527222456) do
     t.string   "role_of_origin"
     t.string   "milestones"
     t.string   "machine_state"
-    t.string   "fault"
+    t.string   "transaction_params"
     t.datetime "created_at",           :null => false
     t.datetime "updated_at",           :null => false
   end
@@ -82,11 +98,22 @@ ActiveRecord::Schema.define(:version => 20120527222456) do
 
   create_table "valuables", :force => true do |t|
     t.integer  "transaction_id"
+    t.integer  "value_cents"
     t.string   "xasset"
     t.string   "description"
     t.string   "more_description"
+    t.string   "assigned_to"
     t.datetime "created_at",       :null => false
     t.datetime "updated_at",       :null => false
+  end
+
+  create_table "xactions", :force => true do |t|
+    t.string   "op"
+    t.integer  "primary_id"
+    t.integer  "beneficiary_id"
+    t.integer  "amount_cents"
+    t.datetime "created_at",     :null => false
+    t.datetime "updated_at",     :null => false
   end
 
 end

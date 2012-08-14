@@ -1,0 +1,29 @@
+<%= form_for(@xaction) do |f| %>
+  <% if @xaction.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(@xaction.errors.count, "error") %> prohibited this xaction from being saved:</h2>
+
+      <ul>
+      <% @xaction.errors.full_messages.each do |msg| %>
+        <li><%= msg %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="field">
+    <%= f.label :party_id %><br />
+    <%= f.number_field :party_id %>
+  </div>
+  <div class="field">
+    <%= f.label :op %><br />
+    <%= f.text_field :op %>
+  </div>
+  <div class="field">
+    <%= f.label :amount_cents %><br />
+    <%= f.number_field :amount_cents %>
+  </div>
+  <div class="actions">
+    <%= f.submit %>
+  </div>
+<% end %>

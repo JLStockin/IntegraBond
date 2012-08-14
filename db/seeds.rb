@@ -17,6 +17,12 @@ admin.admin = 1
 admin.do_account
 admin.save
 
+###################################################################################
+#
+# Accounts 
+#
+admin_account = Account.create(name: "admin")
+
 user_data = [[first_name: "Chris", last_name: "Schille", email: "user1@example.com", \
 		password: "foobar"], 
 	[first_name: "Sali", last_name: "Schille", email: "user2@example.com", \
@@ -27,11 +33,3 @@ user_data.each do |attrs|
 	user.do_account
 	user.save
 end
-
-#
-# Contracts and supporting objects
-#
-Dir.entries(Dir.pwd + "/app/models/contracts").each do |entry|
-	require Dir.pwd + '/app/models/contracts/' + entry unless (entry[0] == ".") 
-end
-

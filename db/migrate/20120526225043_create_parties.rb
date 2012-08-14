@@ -4,6 +4,9 @@ class CreateParties < ActiveRecord::Migration
       t.integer :transaction_id
       t.string	:role
       t.integer :user_id
+	  t.boolean :is_bonded
+	  t.integer	:bound_amount
+	  t.integer	:fees_amount
 
       t.timestamps
     end

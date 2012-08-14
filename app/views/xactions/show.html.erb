@@ -1,0 +1,20 @@
+<p id="notice"><%= notice %></p>
+
+<p>
+  <b>Party:</b>
+  <%= @xaction.party_id %>
+</p>
+
+<p>
+  <b>Op:</b>
+  <%= @xaction.op %>
+</p>
+
+<p>
+  <b>Amount cents:</b>
+  <%= @xaction.amount_cents %>
+</p>
+
+
+<%= link_to 'Edit', edit_xaction_path(@xaction) %> |
+<%= link_to 'Back', xactions_path %>

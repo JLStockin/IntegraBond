@@ -12,21 +12,18 @@ def make_users
 
 	admin =		User.build(			:first_name => "The",
 									:last_name => "Admin",
-									:email => "admin@gmail.com",
+									:email => "admin@example.com",
 									:password => "foobar",
 									:password_confirmation => "foobar"
 								)
-	admin.account =
-		Account.build(				:available_funds => 0,
-									:total_funds => 0
-								)
+	admin.build_account
 	admin.account.user = admin
 	admin.toggle!(:admin)
 	admin.save!
 
-	mike = User.build(				:first_name => "Michael",
+	mike = User.new(				:first_name => "Michael",
 									:last_name => "Durfee",
-									:email => "mdurfee@gmail.com",
+									:email => "mdurfee@example.com",
 									:account_id => 2,
 									:password => "foobar",
 									:password_confirmation => "foobar"
