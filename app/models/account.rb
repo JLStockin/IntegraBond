@@ -16,20 +16,14 @@ class AccountValidator < ActiveModel::Validator
 	end
 end
 
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# TODO: wrap some xactions with :as => :admin? !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 class Account < ActiveRecord::Base
   
 	attr_accessible		:name
 
 	belongs_to :user
-	has_many :xactions, :dependent => :destroy
 	validates_with		::AccountValidator
 
 	def sufficient_funds?(amnt)
-		raise "fund sufficiency request with amount < zero" if amnt < 0
 		Money.parse(amnt) <= available_funds()
 	end
 
@@ -55,13 +49,13 @@ class Account < ActiveRecord::Base
 		self.hold_funds -= amnt 
 	end
 
-	def deposit(amnt, amnt_to_clear)
+	def deposit(amnt, amnt_to_reserve)
 		amnt = Money.parse(amnt)
-		amnt_to_clear = Money.parse(amnt_to_clear)
-		raise "can't clear #{amnt_to_clear} for #{amnt}" \
-			if amnt <= 0 or amnt_to_clear < 0 or amnt_to_clear > amnt
+		amnt_to_reserve = Money.parse(amnt_to_reserve)
+		raise "can't clear #{amnt_to_reserve} for #{amnt}" \
+			if amnt <= 0 or amnt_to_reserve < 0 or amnt_to_reserve > amnt
 		self.funds += amnt
-		self.hold_funds += amnt_to_clear if amnt_to_clear >= MZERO
+		self.hold_funds += amnt_to_reserve if amnt_to_reserve >= MZERO
 	end
 
 	def withdraw(amnt)
@@ -72,21 +66,15 @@ class Account < ActiveRecord::Base
 		self.funds -= amnt 
 	end
 
-	#
-	# This method also calles save! on both accounts
-	#
 	def Account.transfer(amnt, from, to, clear_amnt=0)
 		amnt = Money.parse(amnt) 
 		clear_amnt = Money.parse(clear_amnt)
 		raise "can't withdraw zero or negative funds amount." \
 			if (amnt <= MZERO or clear_amnt < MZERO \
 				or !from.sufficient_funds?(amnt - clear_amnt))
-		begin
-			Account.internal_transfer(amnt, from, to, clear_amnt)
-				return true
-		rescue
-			return false
-		end
+		from.clear(clear_amnt) if clear_amnt > MZERO 
+		from.withdraw(amnt)
+		to.deposit(amnt, 0)
 	end
 		
 	def to_s
@@ -97,59 +85,42 @@ class Account < ActiveRecord::Base
 		def set_funds(amnt, reserve)
 			amnt = Money.parse(amnt) 
 			self.funds = amnt 
-			if reserve > 0 then
-				reserve = Money.parse(reserve)
-				self.hold_funds = reserve
-			end
+			reserve = Money.parse(reserve)
+			self.hold_funds = reserve
 		end
 
 	end
 
-		#
-		# These are needed to make Money compatible with ActiveRecord
-		#
-		def funds
-			write_attribute(:funds_cents, 0) if read_attribute(:funds_cents).nil?
-			write_attribute(:funds_currency, Money.default_currency) \
-				if read_attribute(:funds_currency).nil?
-			Money.new(read_attribute(:funds_cents), read_attribute(:funds_currency))
-		end
 
-		def hold_funds
-			write_attribute(:hold_funds_cents, 0) if read_attribute(:hold_funds_cents).nil?
-			write_attribute(:funds_currency, Money.default_currency) \
-				if read_attribute(:funds_currency).nil?
-			Money.new(read_attribute(:hold_funds_cents), read_attribute(:funds_currency))
-		end
+	#
+	# These are needed to make Money compatible with ActiveRecord
+	#
+	def funds
+		write_attribute(:funds_cents, 0) if read_attribute(:funds_cents).nil?
+		write_attribute(:funds_currency, Money.default_currency) \
+			if read_attribute(:funds_currency).nil?
+		Money.new(read_attribute(:funds_cents), read_attribute(:funds_currency))
+	end
 
-		def funds=(value)
-			Money.parse(value).tap do |fnds|
-				write_attribute :funds_cents, fnds.cents
-				write_attribute :funds_currency, fnds.currency_as_string
-			end
-		end
+	def hold_funds
+		write_attribute(:hold_funds_cents, 0) if read_attribute(:hold_funds_cents).nil?
+		write_attribute(:funds_currency, Money.default_currency) \
+			if read_attribute(:funds_currency).nil?
+		Money.new(read_attribute(:hold_funds_cents), read_attribute(:funds_currency))
+	end
 
-		def hold_funds=(value)
-			Money.parse(value).tap do |fnds|
-				write_attribute :hold_funds_cents, fnds.cents
-				write_attribute :funds_currency, fnds.currency_as_string
-			end
+	def funds=(value)
+		Money.parse(value).tap do |fnds|
+			write_attribute :funds_cents, fnds.cents
+			write_attribute :funds_currency, fnds.currency_as_string
 		end
+	end
 
-	private
-
-		def Account.admin_account
-			Account.find(1)
+	def hold_funds=(value)
+		Money.parse(value).tap do |fnds|
+			write_attribute :hold_funds_cents, fnds.cents
+			write_attribute :funds_currency, fnds.currency_as_string
 		end
-
-		def Account.internal_transfer(amnt, from, to, clr)
-			Account.transaction do
-				from.clear(clr) if clr > MZERO 
-				from.withdraw(amnt)
-				to.deposit(amnt, amnt)
-				from.save!
-				to.save!
-			end
-		end
+	end
 
 end

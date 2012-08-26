@@ -1,11 +1,11 @@
 require 'spec_helper'
 
 #
-# Class-level validations for contracts (validations on superclass Transaction)
+# Class-level validations for Contracts (validations on superclass Contract)
 #
-describe Transaction do
+describe Contract do
 
-	contract = Transaction.contracts[0].to_s
+	contract = Contract.contracts[0].to_s
 
 	it "should have found contract(s)" do
 		contract.should_not be_nil
@@ -46,6 +46,10 @@ describe Transaction do
 					role_factory_name = role_sym.to_s + "_party"
 					party = FactoryGirl.create(role_sym)
 				end
+			end
+
+			it "should pass basic class validations" do
+				contract.validate_contract
 			end
 
 			it "should have a name" do
@@ -115,6 +119,15 @@ describe Transaction do
 			it "should identify a bad transaction asset (xasset)" do
 				Transaction.xasset?(:dead_skunks).should be_false
 			end
+
+			it "should have an initial artifact" do
+				pending
+			end
+
+			it "should have an initial goal" do
+				pending
+			end
+
 		end	
 	end
 end

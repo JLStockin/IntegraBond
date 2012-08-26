@@ -1,0 +1,45 @@
+<p id="notice"><%= notice %></p>
+
+<p>
+  <b>Type:</b>
+  <%= @goal.type %>
+</p>
+
+<p>
+  <b>Transaction:</b>
+  <%= @goal.transaction_id %>
+</p>
+
+<p>
+  <b>T start:</b>
+  <%= @goal.t_start %>
+</p>
+
+<p>
+  <b>T end:</b>
+  <%= @goal.t_end %>
+</p>
+
+<p>
+  <b>Machine state:</b>
+  <%= @goal.machine_state %>
+</p>
+
+<p>
+  <b>State params:</b>
+  <%= @goal.state_params %>
+</p>
+
+<p>
+  <b>Description:</b>
+  <%= @goal.description %>
+</p>
+
+<p>
+  <b>More description:</b>
+  <%= @goal.more_description %>
+</p>
+
+
+<%= link_to 'Edit', edit_goal_path(@goal) %> |
+<%= link_to 'Back', goals_path %>

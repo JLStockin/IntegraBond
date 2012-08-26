@@ -5,6 +5,7 @@ class CreateXactions < ActiveRecord::Migration
       t.integer		:primary_id
       t.integer		:beneficiary_id
       t.integer		:amount_cents
+      t.integer		:hold_cents
 
       t.timestamps
     end

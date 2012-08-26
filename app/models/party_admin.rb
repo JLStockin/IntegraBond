@@ -1,0 +1,3 @@
+class PartyAdmin < Party
+
+end

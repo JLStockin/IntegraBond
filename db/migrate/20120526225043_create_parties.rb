@@ -1,12 +1,10 @@
 class CreateParties < ActiveRecord::Migration
   def change
     create_table :parties do |t|
+	  t.string  :type
+      t.integer :user_id
       t.integer :transaction_id
       t.string	:role
-      t.integer :user_id
-	  t.boolean :is_bonded
-	  t.integer	:bound_amount
-	  t.integer	:fees_amount
 
       t.timestamps
     end

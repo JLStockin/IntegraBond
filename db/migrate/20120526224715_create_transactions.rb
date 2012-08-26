@@ -4,10 +4,9 @@ class CreateTransactions < ActiveRecord::Migration
       t.string		:type	# contract class
       t.integer		:prior_transaction_id
 	  t.string		:author_email
-      t.string		:role_of_origin
-	  t.string		:milestones	# free form hash describing important DateTimes
 	  t.string		:machine_state
-	  t.string		:transaction_params	# free form hash
+	  t.string		:role_of_origin
+	  t.string		:_data # yaml'd hash
 
       t.timestamps
     end

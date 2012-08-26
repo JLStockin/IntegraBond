@@ -303,7 +303,7 @@ describe "Account tranfers" do
 
 		it "2nd account should be credited" do
 			Account.transfer(FIFTY, @from_account, @to_account)
-			@to_account.available_funds.should be == FIFTY 
+			@to_account.available_funds.should be == HUNDRED 
 		end
 
 		it "2nd account should be credited" do
@@ -318,6 +318,8 @@ describe "Account tranfers" do
 			@to_account.available_funds.should be == FIFTY 
 
 			Account.transfer(FIFTY, @from_account, @to_account)
+			@from_account.save
+			@to_account.save
 			@from_account.reload
 			@to_account.reload
 

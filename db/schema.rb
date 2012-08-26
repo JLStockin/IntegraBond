@@ -11,7 +11,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20120810012222) do
+ActiveRecord::Schema.define(:version => 20120816155038) do
 
   create_table "accounts", :force => true do |t|
     t.integer  "user_id"
@@ -25,6 +25,26 @@ ActiveRecord::Schema.define(:version => 20120810012222) do
 
   add_index "accounts", ["user_id"], :name => "index_accounts_on_user_id"
 
+  create_table "apples", :force => true do |t|
+    t.string   "type"
+    t.string   "machine_state"
+    t.string   "_data"
+    t.datetime "created_at",    :null => false
+    t.datetime "updated_at",    :null => false
+  end
+
+  create_table "artifacts", :force => true do |t|
+    t.string   "type"
+    t.integer  "transaction_id"
+    t.integer  "sender_id"
+    t.integer  "receiver_id"
+    t.string   "_data"
+    t.datetime "created_at",     :null => false
+    t.datetime "updated_at",     :null => false
+  end
+
+  add_index "artifacts", ["transaction_id"], :name => "index_artifacts_on_transaction_id"
+
   create_table "disputes", :force => true do |t|
     t.integer  "transaction_id"
     t.string   "claimant"
@@ -37,24 +57,24 @@ ActiveRecord::Schema.define(:version => 20120810012222) do
 
   add_index "disputes", ["transaction_id"], :name => "index_disputes_on_transaction_id"
 
-  create_table "evidences", :force => true do |t|
+  create_table "goals", :force => true do |t|
+    t.string   "type"
     t.integer  "transaction_id"
-    t.string   "hash"
-    t.string   "description_short"
-    t.string   "description_long"
-    t.datetime "created_at",        :null => false
-    t.datetime "updated_at",        :null => false
+    t.string   "machine_state"
+    t.string   "_data"
+    t.datetime "expires_at"
+    t.datetime "created_at",     :null => false
+    t.datetime "updated_at",     :null => false
   end
 
-  add_index "evidences", ["transaction_id"], :name => "index_evidences_on_transaction_id"
+  add_index "goals", ["expires_at"], :name => "index_goals_on_expires_at"
+  add_index "goals", ["transaction_id"], :name => "index_goals_on_transaction_id"
 
   create_table "parties", :force => true do |t|
+    t.string   "type"
+    t.integer  "user_id"
     t.integer  "transaction_id"
     t.string   "role"
-    t.integer  "user_id"
-    t.boolean  "is_bonded"
-    t.integer  "bound_amount"
-    t.integer  "fees_amount"
     t.datetime "created_at",     :null => false
     t.datetime "updated_at",     :null => false
   end
@@ -75,10 +95,9 @@ ActiveRecord::Schema.define(:version => 20120810012222) do
     t.string   "type"
     t.integer  "prior_transaction_id"
     t.string   "author_email"
-    t.string   "role_of_origin"
-    t.string   "milestones"
     t.string   "machine_state"
-    t.string   "transaction_params"
+    t.string   "role_of_origin"
+    t.string   "_data"
     t.datetime "created_at",           :null => false
     t.datetime "updated_at",           :null => false
   end
@@ -97,14 +116,15 @@ ActiveRecord::Schema.define(:version => 20120810012222) do
   add_index "users", ["email"], :name => "index_users_on_email", :unique => true
 
   create_table "valuables", :force => true do |t|
+    t.string   "type"
     t.integer  "transaction_id"
+    t.string   "machine_state"
     t.integer  "value_cents"
-    t.string   "xasset"
-    t.string   "description"
-    t.string   "more_description"
-    t.string   "assigned_to"
-    t.datetime "created_at",       :null => false
-    t.datetime "updated_at",       :null => false
+    t.string   "origin"
+    t.string   "disposition"
+    t.string   "_data"
+    t.datetime "created_at",     :null => false
+    t.datetime "updated_at",     :null => false
   end
 
   create_table "xactions", :force => true do |t|
@@ -112,6 +132,7 @@ ActiveRecord::Schema.define(:version => 20120810012222) do
     t.integer  "primary_id"
     t.integer  "beneficiary_id"
     t.integer  "amount_cents"
+    t.integer  "hold_cents"
     t.datetime "created_at",     :null => false
     t.datetime "updated_at",     :null => false
   end

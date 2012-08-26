@@ -9,20 +9,20 @@
 
 ###################################################################################
 #
-# Users
+# Administrator 
 #
-admin = User.create(first_name: "admin", last_name: "Administrator",
+fraud_narc = User.create(first_name: "Fraud", last_name: "Narc", email: "bungabunga@example.com",
+	password: "foobar")
+admin = User.create(first_name: "M", last_name: "Administrator",
 		email: "cschille@gmail.com", password: "foobar")
 admin.admin = 1
-admin.do_account
+admin.monetize("admin")
 admin.save
 
-###################################################################################
-#
-# Accounts 
-#
-admin_account = Account.create(name: "admin")
+# This party is the administrator, and can only participate as a beneficiary
+PartyAdmin.create(transaction_id: 0, user: admin)
 
+# Two users
 user_data = [[first_name: "Chris", last_name: "Schille", email: "user1@example.com", \
 		password: "foobar"], 
 	[first_name: "Sali", last_name: "Schille", email: "user2@example.com", \
@@ -30,6 +30,6 @@ user_data = [[first_name: "Chris", last_name: "Schille", email: "user1@example.c
 
 user_data.each do |attrs|
 	user = User.create(attrs)
-	user.do_account
+	user.monetize
 	user.save
 end

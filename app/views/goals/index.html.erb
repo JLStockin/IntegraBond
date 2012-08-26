@@ -1,0 +1,37 @@
+<h1>Listing goals</h1>
+
+<table>
+  <tr>
+    <th>Type</th>
+    <th>Transaction</th>
+    <th>T start</th>
+    <th>T end</th>
+    <th>Machine state</th>
+    <th>State params</th>
+    <th>Description</th>
+    <th>More description</th>
+    <th></th>
+    <th></th>
+    <th></th>
+  </tr>
+
+<% @goals.each do |goal| %>
+  <tr>
+    <td><%= goal.type %></td>
+    <td><%= goal.transaction_id %></td>
+    <td><%= goal.t_start %></td>
+    <td><%= goal.t_end %></td>
+    <td><%= goal.machine_state %></td>
+    <td><%= goal.state_params %></td>
+    <td><%= goal.description %></td>
+    <td><%= goal.more_description %></td>
+    <td><%= link_to 'Show', goal %></td>
+    <td><%= link_to 'Edit', edit_goal_path(goal) %></td>
+    <td><%= link_to 'Destroy', goal, confirm: 'Are you sure?', method: :delete %></td>
+  </tr>
+<% end %>
+</table>
+
+<br />
+
+<%= link_to 'New Goal', new_goal_path %>

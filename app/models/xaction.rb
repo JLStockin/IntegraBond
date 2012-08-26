@@ -3,7 +3,7 @@
 # Xaction -- banking-level transactions.  Adds logging and security/insulation to Account.
 # The changes to the Account(s) occur as the Xaction is saved. 
 # Note that bonds may be asymmetric; therefore, Xaction only releases funds for the
-# benefactor.  NB: the beneficiary has to be released in another Xaction.
+# benefactor.  NB: the params_checked has to be released in another Xaction.
 #
 #######################################################################################
 
@@ -14,50 +14,35 @@ class XactionCallback
 
 	def before_save(xaction)
 		result = false
-		if xaction.valid? and xaction.primary.account.valid? then
+		if xaction.valid? and xaction.primary.valid? then
 
 			if (xaction.op == :reserve) then
-				result = beneficiary?(xaction, false) \
-					and xaction.primary.account.reserve_funds(xaction.amount) \
-					and xaction.primary.account.save!
+				result = params_checked?(xaction, false) \
+					and xaction.primary.reserve(xaction.amount) \
+					and xaction.primary.save!
 
 			elsif (xaction.op == :release) then
-				result = beneficiary?(xaction, false) \
-					and xaction.primary.account.clear_funds(xaction.amount) \
-					and xaction.primary.account.save!
-
-			elsif (xaction.op == :credit) then
-				result = beneficiary?(xaction, true) \
-					and Xaction.transfer(xaction.amount, admin_account(), \
-						xaction.beneficiary.account, 0)
-
-			elsif (xaction.op == :bond_transfer) then
-				result = beneficiary?(xaction, true) \
-					and Account.transfer(xaction.amount, xaction.primary.account, \
-						xaction.beneficiary.account, xaction.amount)
-
-			elsif (xaction.op == :fee_change) then
-				result = beneficiary?(xaction, true) \
-					and Account.transfer(xaction.amount, xaction.primary.account, \
-						xaction.beneficiary.account, xaction.amount)
-
-			elsif (xaction.op == :deposit) then
-				result = beneficiary?(xaction, false) \
-					and xaction.primary.account.deposit(xaction.amount) \
-					and xaction.primary.account.save!
-
-			elsif (xaction.op == :pay_system) then
-				result = beneficiary?(xaction, true) \
-					and Account.transfer(xaction.amount, xaction.primary.account, \
-						admin_account(), xaction.amount)
-
-			elsif (xaction.op == :withdraw) then
-				result = beneficiary?(xaction, false) \
-					and xaction.primary.account.withdraw(xaction.amount) \
-					and xaction.primary.account.save!
+				result = params_checked?(xaction, false) \
+					and xaction.primary.clear(xaction.amount) \
+					and xaction.primary.save!
 
 			elsif (xaction.op == :transfer) then
-				raise "transfer not supported"
+				result = params_checked?(xaction, true) \
+					and Account.transfer(xaction.amount, xaction.primary, \
+						xaction.beneficiary, xaction.hold.nil? ? Money.new(0) : xaction.hold) \
+					and xaction.primary.save! \
+					and xaction.beneficiary.save!
+
+			elsif (xaction.op == :deposit) then
+				result = params_checked?(xaction, false) \
+					and xaction.primary.deposit(xaction.amount, \
+						xaction.hold.nil? ? Money.new(0) : xaction.hold) \
+					and xaction.primary.save!
+
+			elsif (xaction.op == :withdraw) then
+				result = params_checked?(xaction, false) \
+					and xaction.primary.withdraw(xaction.amount) \
+					and xaction.primary.save!
 
 			else
 				raise "unsupported op '#{op}'"
@@ -70,14 +55,14 @@ class XactionCallback
 
 	private
 
-		# Validates existence (or absence) of beneficiary in xaction
-		def beneficiary?(xaction, need)
+		# Validates existence (or absence) of params_checked in xaction
+		def params_checked?(xaction, need)
 			if need then
-				raise "please specify second party for op '#{xaction.other_party}'" \
-					if xaction.other_party.nil?
+				raise "please specify second account for op '#{xaction.other_account}'" \
+					if xaction.beneficiary.nil?
 			else
-				raise "beneficiary party specified for op '#{xaction.other_party}' not needed" \
-					unless xaction.other_party.nil?
+				raise "second account specified for op '#{xaction.other_account}' not needed" \
+					unless xaction.beneficiary.nil?
 			end
 			return true
 		end
@@ -85,32 +70,26 @@ end
 
 class Xaction < ActiveRecord::Base
 
-	TRANSACTION_ACCOUNT_OPS = { \
-		reserve:		"FUNDS RESERVE", \
-		release:		"FUNDS RELEASE", \
-		credit:			"CREDIT", \
-		pay_system:		"SYSTEM CHARGE",
-		bond_transfer:	"BOND PAID OUT", \
-		fee_change:		"FEES AWARDED", \
-		deposit:		"DEPOSIT", \
-		withdraw:		"WITHDRAW", \
-		transfer:		"TRANSFER", \
-	}
+	TRANSACTION_ACCOUNT_OPS = [ \
+		[ :reserve,		"FUNDS RESERVE",	1],
+		[ :release,		"FUNDS RELEASE",	1],
+		[ :deposit,		"DEPOSIT",			1],
+		[ :transfer,	"TRANSFER",			2],
+		[ :withdraw,	"WITHDRAW",			1] \
+	]
 
-	attr_accessible :op, :beneficiary
+	attr_accessible :op
 	monetize :amount_cents
+	monetize :hold_cents
 
-	belongs_to :primary, class_name: Party, foreign_key: :primary_id
-	belongs_to :beneficiary, class_name: Party, foreign_key: :beneficiary_id
+	belongs_to :primary, class_name: Account, foreign_key: :primary_id
+	belongs_to :beneficiary, class_name: Account, foreign_key: :beneficiary_id
 
-	validates :op, :inclusion => TRANSACTION_ACCOUNT_OPS
+	validates :op, :inclusion => TRANSACTION_ACCOUNT_OPS.map {|record| record[0]}
 	validates :primary, :presence => true
-	validates :amount_cents, :numericality => true
+	validates :amount_cents, :numericality => { :greater_than => 0 } 
+	validates :hold_cents, :numericality => { :greater_than_or_equal => 0 } 
 
-	on_save	XactionCallback.new() 
-
-	def admin_account()
-		Account.admin_account.call
-	end
+	before_save	XactionCallback.new() 
 
 end

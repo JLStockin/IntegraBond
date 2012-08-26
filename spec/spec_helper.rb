@@ -61,7 +61,7 @@ RSpec.configure do |config|
 		prior = Object.module_eval(class_name).new
 		trans.prior_transaction = prior
 		trans.role_of_origin = :buyer 
-		trans.milestones = [ show: {minutes: 20}, leave: {hours: 10} ]
+		trans.goals = [ show: {minutes: 20}, leave: {hours: 10} ]
 		trans.machine_state = :unbound 
 		trans.type = class_name 
 		trans.fault = {seller: false, buyer: false}
@@ -83,7 +83,7 @@ RSpec.configure do |config|
 		prior = Object.module_eval(class_name).new
 		trans.prior_transaction = prior
 		trans.role_of_origin = :buyer 
-		trans.milestones = [ show: {minutes: 20}, leave: {hours: 10} ]
+		trans.goals = [ show: {minutes: 20}, leave: {hours: 10} ]
 		trans.machine_state = :unbound 
 		trans.type = class_name 
 		trans.fault = {seller: false, buyer: false}

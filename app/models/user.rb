@@ -33,13 +33,12 @@ class User < ActiveRecord::Base
 		ret
 	end
 
-	# Create a new user's account
-	def do_account
-		self.create_account(name: "default")
-		account = self.account
+	# Initialize a new user's account
+	def monetize(name = "default")
+		account = self.create_account(name: name)
 		account.available_funds = 0
 		account.total_funds = 0
-		account.save
+		account.save!
 	end
 
 	# Return true if the user's passsword matches the submitted password.
