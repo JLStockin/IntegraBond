@@ -48,64 +48,25 @@ RSpec.configure do |config|
 		user = User.new(FactoryGirl.attributes_for(:user))
 		user.password = "foobar"
 		user.password_confirmation = "foobar"
-		user.account = Account.new(:name => "default")
+		user.account = Account.create(:name => "default")
 		user.save!
 		user
 	end
 
-	def create_test_transaction(class_name)
-		trans = Object.module_eval(class_name).new
-		user = FactoryGirl.build(:user)
-		trans.author = user
+	def new_test_transaction(contract, attributes=nil)
+		trans = (attributes.nil?) ? contract.new : contract.new(attributes)
+		trans.save!
+		admin = trans.parties[0]
 
-		prior = Object.module_eval(class_name).new
-		trans.prior_transaction = prior
-		trans.role_of_origin = :buyer 
-		trans.goals = [ show: {minutes: 20}, leave: {hours: 10} ]
-		trans.machine_state = :unbound 
-		trans.type = class_name 
-		trans.fault = {seller: false, buyer: false}
+		party1 = trans.parties.create!(:user_id => User.find(3).id)
+		party2 = trans.parties.create!(:user_id => User.find(4).id)
+		trans.origin = party1
+
+		valuable = trans.valuables.create!( \
+			:origin_id => party1.id,
+			:disposition_id => party1.id \
+		)
 		trans
-	end
-
-
-	def new_test_transaction(class_name)
-		trans = Object.module_eval(class_name).new(@attr)
-		trans.type = class_name 
-		trans
-	end
-
-	def new_invalid_test_transaction(class_name)
-		trans = Object.module_eval(class_name).new
-		user = FactoryGirl.build(:user)
-		trans.author = user
-
-		prior = Object.module_eval(class_name).new
-		trans.prior_transaction = prior
-		trans.role_of_origin = :buyer 
-		trans.goals = [ show: {minutes: 20}, leave: {hours: 10} ]
-		trans.machine_state = :unbound 
-		trans.type = class_name 
-		trans.fault = {seller: false, buyer: false}
-		trans
-	end
-	
-	# Needed so contracts with no xassets don't break test for xassets
-	def test_for_valid_xasset
-		if Transaction.xassets.count > 0 then
-			xasset = Transaction.xassets.keys[0]
-			Transaction.has_xasset?(xasset)
-		else
-			true
-		end
-	end
-
-	def test_for_invalid_xasset
-		if Transaction.xassets.count > 0 then
-			Transaction.has_xasset?(:dead_skunks)
-		else
-			false
-		end
 	end
 
 end

@@ -3,12 +3,11 @@ class CreateParties < ActiveRecord::Migration
     create_table :parties do |t|
 	  t.string  :type
       t.integer :user_id
-      t.integer :transaction_id
-      t.string	:role
+      t.integer :contract_id
 
       t.timestamps
     end
 
-	add_index :parties, :transaction_id
+	add_index :parties, :contract_id
   end
 end

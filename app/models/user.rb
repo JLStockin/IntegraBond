@@ -36,8 +36,8 @@ class User < ActiveRecord::Base
 	# Initialize a new user's account
 	def monetize(name = "default")
 		account = self.create_account(name: name)
-		account.available_funds = 0
-		account.total_funds = 0
+		account.funds = 0
+		account.hold_funds = 0
 		account.save!
 	end
 

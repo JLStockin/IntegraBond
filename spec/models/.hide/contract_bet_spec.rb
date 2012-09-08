@@ -3,18 +3,31 @@ require 'spec_helper'
 #
 # Class-level validations for contracts (validations on superclass Transaction)
 #
-CONTRACT_PATH = "IBContracts::Bet::"
-def classify(klass)
-	(CONTRACT_PATH + klass.instance_of? Class ? klass.to_s : klass).to_sym
-end
 
-describe IBContracts::ContractBet do
+	it "should be able to write and read params a, b in _data" do
+		@goal.a = "a"
+		@goal.b = "b"
+		@goal.save!
+		id = @goal.id
+		g = Goal.find(id)
+		g.a.should be == "a"
+		g.b.should be == "b"
+	end
+
+	it "should do the right thing with event start" do
+		pending
+	end
+
+	it "should do the right thing with event provision" do
+		pending
+	end
+
 
 	before(:all) do
 
 		@trans	= ContractBet.new()
 
-		af = FactoryGirl.build(:"ib_contracts/bet/artifact_accept", transaction: @trans)
+		@artifact
 		results = {}
 		results[:PartyParty1] = Random.rand(2)
 		results[:PartyParty2] = results[:PartyParty1] == 0 ? 1 : 0

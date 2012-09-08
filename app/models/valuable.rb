@@ -10,14 +10,45 @@ class Valuable < ActiveRecord::Base
 	include ActiveModel::Validations
 
 	# Monetization
-	monetize	:value_cents
+	monetize		:value_cents
 
 	# Accessibility
-	attr_accessor :user_id, :transaction_id
-	#attr_reader :type ???
+	attr_accessible :contract_id, :origin_id, :disposition_id, :value
 
 	# Associations
-	belongs_to	:transaction
+	belongs_to	:contract, class_name: Contract::Base, foreign_key: :contract_id
+	belongs_to	:origin, class_name: Party, foreign_key: :origin_id
+	belongs_to	:disposition, class_name: Party, foreign_key: :disposition_id 
+
+	# Validations
+	validates	:contract_id, presence: true
+
+	validates	:origin_id, presence: true
+	validates	:disposition_id, presence: true
+	validates	:value_cents, numericality: true
+
+	#######################################################################
+	#
+	# Instance initialization
+	#
+
+	# Populate fields with defaults for new records
+	class ValuableInitializer
+		def self.after_initialize(record)
+			record.initialize_valuable
+		end
+
+		def self.after_create(record)
+			record.initialize_valuable
+		end
+	end
+
+	after_create		ValuableInitializer
+	after_initialize	ValuableInitializer
+
+	def initialize_valuable
+		self.value_cents ||= 0
+	end
 
 	##################################################################################
 	#
@@ -100,17 +131,22 @@ class Valuable < ActiveRecord::Base
 		end
 	end
 
+	# These params must be specified
+	def self.params
+		self.class::PARAMS
+	end
+
 	#
 	# Callbacks and helper classes
 	#
 
 	# Validations
-	def self.validate_initial_state(transaction)
-	    errors[:base] << "initial machine_state cannot be nil" if transaction.machine_state.nil?
+	def self.validate_initial_state(contract)
 	end
 
 	def to_s
-		"#{self.class} transaction=#{transaction}, value=#{value}, origin=#{origin}, disposition=#{disposition}, machine_state=#{machine_state}" 
+		"#{self.class} contract=#{contract}, value=#{value}, origin=#{origin}, " \
+			+ "disposition=#{disposition}, machine_state=#{machine_state}" 
 	end
 
 end

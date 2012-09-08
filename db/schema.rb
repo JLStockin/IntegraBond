@@ -25,61 +25,47 @@ ActiveRecord::Schema.define(:version => 20120816155038) do
 
   add_index "accounts", ["user_id"], :name => "index_accounts_on_user_id"
 
-  create_table "apples", :force => true do |t|
+  create_table "artifacts", :force => true do |t|
     t.string   "type"
+    t.integer  "contract_id"
+    t.string   "_ar_data"
+    t.datetime "created_at",  :null => false
+    t.datetime "updated_at",  :null => false
+  end
+
+  add_index "artifacts", ["contract_id"], :name => "index_artifacts_on_contract_id"
+
+  create_table "contracts", :force => true do |t|
+    t.string   "type"
+    t.integer  "originator_id"
     t.string   "machine_state"
-    t.string   "_data"
+    t.string   "_ar_data"
     t.datetime "created_at",    :null => false
     t.datetime "updated_at",    :null => false
   end
 
-  create_table "artifacts", :force => true do |t|
-    t.string   "type"
-    t.integer  "transaction_id"
-    t.integer  "sender_id"
-    t.integer  "receiver_id"
-    t.string   "_data"
-    t.datetime "created_at",     :null => false
-    t.datetime "updated_at",     :null => false
-  end
-
-  add_index "artifacts", ["transaction_id"], :name => "index_artifacts_on_transaction_id"
-
-  create_table "disputes", :force => true do |t|
-    t.integer  "transaction_id"
-    t.string   "claimant"
-    t.string   "counterparty"
-    t.text     "allegation"
-    t.text     "response"
-    t.datetime "created_at",     :null => false
-    t.datetime "updated_at",     :null => false
-  end
-
-  add_index "disputes", ["transaction_id"], :name => "index_disputes_on_transaction_id"
-
   create_table "goals", :force => true do |t|
     t.string   "type"
-    t.integer  "transaction_id"
+    t.integer  "contract_id"
     t.string   "machine_state"
-    t.string   "_data"
+    t.string   "_ar_data"
     t.datetime "expires_at"
-    t.datetime "created_at",     :null => false
-    t.datetime "updated_at",     :null => false
+    t.datetime "created_at",    :null => false
+    t.datetime "updated_at",    :null => false
   end
 
+  add_index "goals", ["contract_id"], :name => "index_goals_on_contract_id"
   add_index "goals", ["expires_at"], :name => "index_goals_on_expires_at"
-  add_index "goals", ["transaction_id"], :name => "index_goals_on_transaction_id"
 
   create_table "parties", :force => true do |t|
     t.string   "type"
     t.integer  "user_id"
-    t.integer  "transaction_id"
-    t.string   "role"
-    t.datetime "created_at",     :null => false
-    t.datetime "updated_at",     :null => false
+    t.integer  "contract_id"
+    t.datetime "created_at",  :null => false
+    t.datetime "updated_at",  :null => false
   end
 
-  add_index "parties", ["transaction_id"], :name => "index_parties_on_transaction_id"
+  add_index "parties", ["contract_id"], :name => "index_parties_on_contract_id"
 
   create_table "sessions", :force => true do |t|
     t.string   "session_id", :null => false
@@ -90,17 +76,6 @@ ActiveRecord::Schema.define(:version => 20120816155038) do
 
   add_index "sessions", ["session_id"], :name => "index_sessions_on_session_id"
   add_index "sessions", ["updated_at"], :name => "index_sessions_on_updated_at"
-
-  create_table "transactions", :force => true do |t|
-    t.string   "type"
-    t.integer  "prior_transaction_id"
-    t.string   "author_email"
-    t.string   "machine_state"
-    t.string   "role_of_origin"
-    t.string   "_data"
-    t.datetime "created_at",           :null => false
-    t.datetime "updated_at",           :null => false
-  end
 
   create_table "users", :force => true do |t|
     t.string   "first_name"
@@ -117,12 +92,12 @@ ActiveRecord::Schema.define(:version => 20120816155038) do
 
   create_table "valuables", :force => true do |t|
     t.string   "type"
-    t.integer  "transaction_id"
+    t.integer  "contract_id"
     t.string   "machine_state"
     t.integer  "value_cents"
-    t.string   "origin"
-    t.string   "disposition"
-    t.string   "_data"
+    t.integer  "origin_id"
+    t.integer  "disposition_id"
+    t.string   "_ar_data"
     t.datetime "created_at",     :null => false
     t.datetime "updated_at",     :null => false
   end

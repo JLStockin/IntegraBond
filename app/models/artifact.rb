@@ -12,14 +12,26 @@
 #
 class Artifact < ActiveRecord::Base
 
-	# TODO: 
-	attr_accessible :transaction_id, :sender_id, :receiver_id
+	belongs_to	:contract, class_name: Contract::Base, foreign_key: :contract_id
 
-	belongs_to :transaction
-	belongs_to :sender, class_name: Party
-	belongs_to :receiver, class_name: Party
+	validates	:contract_id, presence: true
 
-	def to_event()
-		self.class.to_s.underscore.to_sym
+	# These params must be specified by the subclass.  They should be a hash containing
+	# default values where appropriate.  Forms will know what to do with them.
+	# For hashed times, the time indicated is an offset from the 'created_at' timestamp
+	# of the keyed Artifact. e.g, the appointment date/time is 24 hours after the
+	# creation of the Artifact of class 'Acceptance'.
+	# 
+	# EX: PARAMS = { :appointment =>	{ :Acceptance => { :hours => 24 } },
+	#                :late =>			{ :Acceptance => { :hours => 24, :minutes => 15 } },
+	#                :seller_bond =>	"$20" \
+	#              }
+	#
+	# Call param_accessor() to create a serialized hash for your params
+	#
+	def self.params
+		self.class::PARAMS
 	end
+
+
 end

@@ -1,50 +1,40 @@
 require 'spec_helper'
 require 'active_support/time'
 
-class ArtifactFoo
-	def to_event; self.class.to_s.underscore.to_sym; end
+module IBContracts
+module Test
+end
 end
 
-class GoalTest < Goal
-	param_accessor :a, :b, :shutdown_time
-	attr_accessor :transaction
+class IBContracts::Test::TestGoal < Goal
 
 	state_machine :machine_state, initial: :s_initial do
 		event :advance do
-			transition :s_initial => :s_state1
+			transition :s_ready => :s_state1
 			transition :s_state1 => :s_state2
 		end
 
-		event :artifact_foo do
-			transition all => :s_got_a_foo
-		end
-
-		event :chron do
-			transition all - :s_expired => :s_expired,
-				:if => lambda { |goal| goal.expires_at.to_i < DateTime.now.to_i }
-		end
+		inject_expiration()
 	end
-end
 
-class Transaction < ActiveRecord::Base
+	def provision(*params)
+	end
 end
 
 describe Goal do
 	before(:all) do
-		@party1 = FactoryGirl.build(:party1)
-		@party2 = FactoryGirl.build(:party2)
 	end
 
 	it "should create a new instance given valid attributes" do
-		@goal = GoalTest.new()
-		@goal.transaction = Transaction.new()
+		@goal = TestGoal.new() 
+		@transaction = FactoryGirl.create(:test_transaction)
+		@goal.transaction = @transaction 
 		@goal.save!
+		@transaction.goals << @goal
 	end
 
 	before(:each) do
-		@party1.user.account.set_funds(1000, 0)
-		@party2.user.account.set_funds(1000, 0)
-		@goal = GoalTest.new()
+		@goal = IBContracts::Test::GoalTest.new()
 	end
 
 	it "should start out with state of :s_initial" do
@@ -55,19 +45,21 @@ describe Goal do
 		@goal.should respond_to :set_expiration
 		@goal.should respond_to :active?
 		@goal.should respond_to :deactivate
-		@goal.should respond_to :send_event
+
+		@goal.should respond_to :start
+		@goal.should respond_to :chron
+		@goal.should respond_to :provision
 	end
 
 	it "should remember expires_at" do
 		time = DateTime.now
 		@goal.expires_at = time
 		@goal.save!
-		id = @goal.id
-		g = Goal.find(id)
+		@goal.reload!
 		g.expires_at.to_i.should be == time.to_i
 	end
 
-	it "should make set_expiration with two args should work" do
+	it "should set_expiration with two args" do
 		time = DateTime.now()
 		time_plus_1s = time.advance(seconds: 1)
 
@@ -75,13 +67,13 @@ describe Goal do
 		@goal.expires_at.to_i.should be == time_plus_1s.to_i
 	end
 
-	it "should make set_expiration with one arg should work" do
+	it "should set_expiration with one arg" do
 		time = DateTime.now()
 		@goal.set_expiration(time)
 		@goal.expires_at.to_i.should be == time.to_i
 	end
 
-	it "should make set_expiration with no args should throw error" do
+	it "should set_expiration with no args and throw error" do
 		expect {@goal.set_expiration()}.should raise_error
 	end
 
@@ -112,21 +104,6 @@ describe Goal do
 		@goal.active?.should be_false
 	end
 
-	it "should have a working send_event" do
-		@goal.send_event(ArtifactFoo.new)
-		@goal.machine_state_name.should be == :s_got_a_foo
-	end
-
-	it "should be able to write and read params a, b in _data" do
-		@goal.a = "a"
-		@goal.b = "b"
-		@goal.save!
-		id = @goal.id
-		g = Goal.find(id)
-		g.a.should be == "a"
-		g.b.should be == "b"
-	end
-
 	it "should transition to :s_state1, then :s_state2" do
 		@goal.advance
 		@goal.machine_state_name.should be == :s_state1
@@ -137,9 +114,8 @@ describe Goal do
 	it "should then remember its state" do
 		@goal.advance
 		@goal.advance
-		id = @goal.id
-		g = Goal.find(id)
-		g.machine_state_name.should be == :s_state2
+		@goal.reload
+		@goal.machine_state_name.should be == :s_state2
 	end
 
 	it "should expire" do
