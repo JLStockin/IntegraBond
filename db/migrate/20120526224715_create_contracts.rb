@@ -4,7 +4,7 @@ class CreateContracts < ActiveRecord::Migration
       t.string		:type	# contract class
 	  t.integer		:originator_id		# Party initiating transaction (origin)
 	  t.string		:machine_state
-	  t.string		:_ar_data # yaml'd hash
+	  t.text		:_ar_data # yaml'd hash
 
       t.timestamps
     end

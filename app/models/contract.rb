@@ -27,14 +27,15 @@
 # active.
 # 
 # We need some way of expressing when goals should expire.  Goal expires_at can be
-# expressed relative to created_at, or relative to another Goal's created_at.  The
-# syntax for this is Yaml:
+# expressed relative to created_at (the current time), or relative to another Goal's
+# created_at.  The syntax for this is Yaml:
 # 
-# { GoalCreateOffer: { GoalOffer: :never } } =>		GoalOffer doesn't expire (it gets
-#                                                   deactivated by GoalAccept)
+# { GoalCreateOffer: :never } =>		GoalOffer doesn't expire (it gets
+#                                       deactivated by GoalAccept)
 #
-# { GoalAccept: { GoalAccept: {:hours => 48} } } =>	GoalAccept expires 48 hrs after
-#													GoalAccept's created_at
+# { GoalAcceptOffer: { GoalTenderOffer: "lambda {|g| g.advance(:hours => 48) }" } }
+#                             =>		GoalAcceptOffer expires 48 hrs after
+#                                       GoalTenderOffer#created_at
 # Startup sequence: 
 #
 #	- user asks to look at contracts
@@ -73,10 +74,10 @@ class Contract::Base < ActiveRecord::Base
 	# Associations
 	belongs_to	:originator, class_name: Party
 
-	has_many	:valuables, foreign_key: :contract_id
-	has_many	:artifacts, foreign_key: :contract_id
-	has_many	:goals, foreign_key: :contract_id
-	has_many	:parties, class_name: Party, foreign_key: :contract_id
+	has_many	:valuables, foreign_key: :contract_id, dependent: :destroy
+	has_many	:artifacts, foreign_key: :contract_id, dependent: :destroy
+	has_many	:goals, foreign_key: :contract_id, dependent: :destroy
+	has_many	:parties, class_name: Party, foreign_key: :contract_id, dependent: :destroy
 
 	# Validations
 
@@ -85,11 +86,18 @@ class Contract::Base < ActiveRecord::Base
 	# Basic class-based instance access methods.  Unlike the class-level methods,
 	# which fetch symbols, these all fetch instance objects (Valuables, Partys, etc)
 	#
-	def model_instance(association, klass)
-		klass = self.namespaced_const(klass)
-		ret = association.all.select {|i| i.class == klass}
-		raise "more than one instance of model type '#{klass}' found" if ret.count > 1 
-		ret[0]
+	def model_instances(subclass_sym)
+		subclass = self.namespaced_const(subclass_sym)
+		klass = subclass.superclass
+		ret = instance_eval("self.#{klass.to_s.downcase.pluralize}.select\
+			{|r| r.class == subclass}")
+		ret
+	end
+
+	def model_instance(subclass_sym)
+		values = model_instances(subclass_sym)
+		raise "model_instances for '#{subclass_sym}' returned more than one" if values.count > 1
+		values[0]
 	end
 
 	#
@@ -97,9 +105,31 @@ class Contract::Base < ActiveRecord::Base
 	#
 	def start()
 		seed_transaction
-		klass = self.class.first_goal()
-		goal = model_instance(goals, klass); raise "goal not yet instantiated" if goal.nil?
-		goal.start()
+
+		self.class.children().each do |goal_klass_sym|
+			goal = self.namespaced_const(goal_klass_sym).create!(:contract_id => self.id) \
+				if model_instance(goal_klass_sym).nil?
+			goal.start()
+		end
+	end
+
+	# 
+	# Halt/abort the transaction by undo-ing and disabling each Goal that has executed.
+	# Undo merely shuffles cash around.  We don't destroy objects.
+	# Each goal will only respond to, at most, one of these commands.
+	#
+	def reverse_completed_goals()
+		gls = self.goals.reverse
+		gls.each do |goal|
+			goal.undo() if goal.can_undo?
+		end
+	end
+
+	def disable_active_goals()
+		gls = self.goals.reverse
+		gls.each do |goal|
+			goal.deactivate() if goal.can_provision?
+		end
 	end
 
 	# This is the system's party, who is party to all contracts and exists
@@ -117,8 +147,8 @@ class Contract::Base < ActiveRecord::Base
 	# This can be overriden by subclass if, for example, an existing Artifact has
 	# the requested data.
 	#
-	def request_provisioning(artifact_klass, goal_id, initial_params)
-		raise "Contract\#request_provisioning must be overriden in subclass"
+	def self.request_provisioning(goal_id, artifact_sym, initial_params)
+		raise "Contract.request_provisioning must be overriden in subclass"
 	end
 
 	#
@@ -130,8 +160,8 @@ class Contract::Base < ActiveRecord::Base
 	FEES[:CLPurchase] = Money.parse("$2")
 	FEES[:ContractBet] = Money.parse("$2")
 
-	def self.fees()
-		contract = self.const_to_symbol(self)
+	def fees()
+		contract = self.class.const_to_symbol(self)
 		return FEES[:default] unless !contract.nil? and FEES.keys.include?(contract) 
 		ret = FEES[contract]
 		ret
@@ -165,8 +195,12 @@ class Contract::Base < ActiveRecord::Base
 		self::TAGS.include?(tag)
 	end
 
-	def self.first_goal
-		self::FIRST_GOAL
+	def self.children
+		self::CHILDREN
+	end
+
+	def self.artifact
+		self::ARTIFACT
 	end
 
 	#######################################################################
@@ -178,15 +212,12 @@ class Contract::Base < ActiveRecord::Base
 	def seed_transaction
 		raise "contract class hierarchy improperly formed" if self.class == Contract::Base
 		self.machine_state = :s_initial	# in case ever used
-		self.save
+		self.save!
 		
 		# Create the party corresponding to admin
 		admin = User.find(2); raise "administrator party not found" if !admin.admin
-		pty = ::AdminParty.create!(:user_id => admin.id, contract_id: self.id)
-
-		# Create the first Goal
-		goal_klass = self.class.first_goal()
-		goal = self.namespaced_const(goal_klass).create!(:contract_id => self.id)
+		pty = ::AdminParty.create!(:user_id => admin.id, contract_id: self.id) \
+			if self.parties.select {|i| i.class == :AdminParty}[0].nil?
 	end
 
 	########################################################################################
@@ -197,7 +228,7 @@ class Contract::Base < ActiveRecord::Base
 	#
 	ContractConstantNames = [ \
 		'VERSION',		'AUTHOR_EMAIL',	'CONTRACT_NAME',	'SUMMARY',
-		'DEFAULT_BOND', 'TAGS' \
+		'DEFAULT_BOND', 'TAGS', 'CHILDREN', 'ARTIFACT' \
 	]
 
 	def self.valid_contract?()
@@ -259,25 +290,13 @@ class Contract::Base < ActiveRecord::Base
 		super
 	end
 
-	# This made not be needed.  Currently, it's not called.
-	def self.load_contracts
-		Dir[Rails.root.join CONTRACT_DIRECTORY, "*"].each do |d|
-			Dir[Rails.root.join(CONTRACT_DIRECTORY, Pathname.new(d).basename, "*.rb")].each do |f|
-				require 'f'
-			end
-		end
-	end
-
 end
 
 ########################################################################################
 #
-# ActiveRecord instantiates proxies which don't behave like normal classes.  ContractManager
-# is a better-behaved static class that the model layer can depend on.
-#
-
+# Class to handle registration of Contracts 
+# 
 class ContractManager
-	attr_accessor :params, :goal_id
 
 	class << self
 		attr_accessor :contracts
@@ -289,12 +308,4 @@ class ContractManager
 		self.contracts << klass
 	end
 
-	#
-	# Called by a controller to send data back to a Goal.
-	#
-	def self.provision(goal_id, params)
-		goal = Goal.find(goal_id)
-		goal.send(:provision, params)
-	end
 end
-

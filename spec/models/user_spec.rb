@@ -3,7 +3,7 @@ require 'spec_helper'
 describe User do
 	
 	before(:each) do
-		@attr = FactoryGirl.attributes_for(:user)
+		@attr = FactoryGirl.attributes_for(:buyer_user)
 	end
 
 	it "should create a new instance given valid attributes" do
@@ -71,7 +71,7 @@ describe User do
 	# Password testing
 	describe "password validations" do
 		before(:each) do
-			@attr = FactoryGirl.attributes_for(:user)
+			@attr = FactoryGirl.attributes_for(:buyer_user)
 		end
 
 		it "should require a password" do

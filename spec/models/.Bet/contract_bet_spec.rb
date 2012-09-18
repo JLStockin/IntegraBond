@@ -1,47 +1,18 @@
 require 'spec_helper'
 
-#
-# Class-level validations for contracts (validations on superclass Transaction)
-#
+	describe "abort transaction" do
 
-	it "should be able to write and read params a, b in _data" do
-		@goal.a = "a"
-		@goal.b = "b"
-		@goal.save!
-		id = @goal.id
-		g = Goal.find(id)
-		g.a.should be == "a"
-		g.b.should be == "b"
-	end
+		before(:each) do
+			@trans	= ContractBet.create!()
+			@trans.start
 
-	it "should do the right thing with event start" do
-		pending
-	end
-
-	it "should do the right thing with event provision" do
-		pending
-	end
-
-
-	before(:all) do
-
-		@trans	= ContractBet.new()
-
-		@artifact
-		results = {}
-		results[:PartyParty1] = Random.rand(2)
-		results[:PartyParty2] = results[:PartyParty1] == 0 ? 1 : 0
-		af.results = results 
-		@trans.artifacts << af 
-		@trans.goals << @initial_goal
-	end
-
-	describe "initial setup" do
-		it "should create an instance with valid attributes" do
-			@trans.save!
 		end
 
-		it "should have parties" do 
+		it "should have a first goal" do
+			@trans.goals[0].class.should be == IBContracts::Bet::ContractBet
+		end
+
+		it "should " do 
 			@trans.should respond_to :parties
 		end
 

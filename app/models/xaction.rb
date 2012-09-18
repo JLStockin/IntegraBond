@@ -12,7 +12,7 @@
 #
 class XactionCallback
 
-	def before_save(xaction)
+	def self.before_save(xaction)
 		result = false
 		if xaction.valid? and xaction.primary.valid? then
 
@@ -53,19 +53,17 @@ class XactionCallback
 		result
 	end
 
-	private
-
-		# Validates existence (or absence) of params_checked in xaction
-		def params_checked?(xaction, need)
-			if need then
-				raise "please specify second account for op '#{xaction.other_account}'" \
-					if xaction.beneficiary.nil?
-			else
-				raise "second account specified for op '#{xaction.other_account}' not needed" \
-					unless xaction.beneficiary.nil?
-			end
-			return true
+	# Validates existence (or absence) of params_checked in xaction
+	def self.params_checked?(xaction, need)
+		if need then
+			raise "please specify second account for op '#{xaction.other_account}'" \
+				if xaction.beneficiary.nil?
+		else
+			raise "second account specified for op '#{xaction.other_account}' not needed" \
+				unless xaction.beneficiary.nil?
 		end
+		return true
+	end
 end
 
 class Xaction < ActiveRecord::Base
@@ -90,6 +88,6 @@ class Xaction < ActiveRecord::Base
 	validates :amount_cents, :numericality => { :greater_than => 0 } 
 	validates :hold_cents, :numericality => { :greater_than_or_equal => 0 } 
 
-	before_save	XactionCallback.new() 
+	before_save	XactionCallback 
 
 end

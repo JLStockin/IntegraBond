@@ -34,17 +34,12 @@ class Valuable < ActiveRecord::Base
 
 	# Populate fields with defaults for new records
 	class ValuableInitializer
-		def self.after_initialize(record)
-			record.initialize_valuable
-		end
-
-		def self.after_create(record)
+		def self.before_create(record)
 			record.initialize_valuable
 		end
 	end
 
-	after_create		ValuableInitializer
-	after_initialize	ValuableInitializer
+	before_create		ValuableInitializer
 
 	def initialize_valuable
 		self.value_cents ||= 0

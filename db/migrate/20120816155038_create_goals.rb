@@ -4,7 +4,7 @@ class CreateGoals < ActiveRecord::Migration
 			t.string	:type
 			t.integer	:contract_id
 			t.string	:machine_state
-			t.string	:_ar_data
+			t.text		:_ar_data
 
 			t.datetime	:expires_at
 			t.timestamps

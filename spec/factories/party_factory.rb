@@ -1,5 +1,5 @@
 module IBContracts
-module Bet
+module Test 
 end
 end
 
@@ -10,12 +10,12 @@ FactoryGirl.define do
 	# Party 
 	#
 	factory :party1, class: Party do |party|
-
-		party.user			FactoryGirl.build(:buyer_user)
+		association	:user,			factory: :buyer_user
+		association :contract,		factory: :test_contract		
 	end
 
 	factory :party2, class: Party do |party|
-
-		party.user			FactoryGirl.build(:seller_user)
+		association	:user,			factory: :seller_user
+		association :contract,		factory: :test_contract		
 	end
 end

@@ -8,7 +8,7 @@ class CreateValuables < ActiveRecord::Migration
 
 			t.integer	:origin_id
 			t.integer	:disposition_id
-			t.string	:_ar_data
+			t.text		:_ar_data
 
 			t.timestamps
 		end

@@ -10,7 +10,7 @@ FactoryGirl.define do
 	end
 
 	sequence :email do |n|
-		"first.last#{n}@example.com"
+		"first#{n}.last#{n}@example.com"
 	end
 
 	######################################################################
@@ -20,32 +20,38 @@ FactoryGirl.define do
 	factory :user_without_account, class: User do |the_user|
 
 		the_user.password				"foobar"
-		the_user.password_confirmation	"foobar"
-		the_user.first_name				FactoryGirl.generate(:first_name)
-		the_user.last_name				FactoryGirl.generate(:last_name)
-		the_user.email					FactoryGirl.generate(:email)
+		the_user.password_confirmation	{ |n| n.password }	
 
-		factory :user do |user|
-			association :account
+		factory :user, class: User do |user|
+			association	:account,		factory: :buyer_account
+			user.email					"seymore.butts@example.com"
+			user.first_name				"Seymore"
+			user.last_name				"Butts"
 		end
 
 		factory :buyer_user, class: User do |user|
-			association	:account, factory: :buyer_account
+			association	:account,		factory: :buyer_account
+			user.email
+			user.first_name
+			user.last_name
 		end
 
 		factory :seller_user, class: User do |user|
-			association :account, factory: :seller_account
+			association	:account,		factory: :seller_account
+			user.email
+			user.first_name
+			user.last_name
 		end
-
 	end
-
 
 	######################################################################
 	#
 	# Account
 	#
 	factory :account, class: Account do |account|
-		account.name	"default"
+		funds_cents			0
+		hold_funds_cents	0
+		funds_currency		"USD"
 
 		factory :admin_account do |account|
 			account.name "admin"

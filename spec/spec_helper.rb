@@ -12,6 +12,10 @@ Dir[Rails.root.join("spec/support/**/*.rb")].each {|f| require f}
 
 RSpec.configure do |config|
 
+# ActiveRecord::Base.logger = Logger.new(STDOUT)
+
+	include FactoryGirl::Syntax::Methods
+
 	# ## Mock Framework
 	#
 	# If you prefer to use mocha, flexmock or RR, uncomment the appropriate line:
@@ -53,20 +57,108 @@ RSpec.configure do |config|
 		user
 	end
 
-	def new_test_transaction(contract, attributes=nil)
-		trans = (attributes.nil?) ? contract.new : contract.new(attributes)
-		trans.save!
-		admin = trans.parties[0]
+	class IBContracts::Test::TestContract < Contract::Base
 
-		party1 = trans.parties.create!(:user_id => User.find(3).id)
-		party2 = trans.parties.create!(:user_id => User.find(4).id)
-		trans.origin = party1
+		VERSION = "0.1"
+		CONTRACT_NAME = "Test Contract"
+		SUMMARY = "This is a test"
+		AUTHOR_EMAIL = "cschille@gmail.com" 
 
-		valuable = trans.valuables.create!( \
-			:origin_id => party1.id,
-			:disposition_id => party1.id \
-		)
-		trans
+		FIRST_GOAL = :TestGoal
+	
+		DEFAULT_BOND = {:Party1 => Money.parse("$20"), :Party2 => Money.parse("$20")}
+
+		TAGS = %W/test default/
+
+		# In real life, this calls a controller and/or looks at other Artifacts.
+
+		def request_provisioning(goal_id, artifact_klass, initial_params)
+			hash = {}
+			initial_params.each_key do |param|
+				hash[param] = "yes" unless param == :value or param == :expire
+			end
+			hash[:value] = Money.parse("$100")
+			hash[:expire] = initial_params[:expire] 
+			TestHelper.stash_return_values(goal_id, artifact_klass, hash)
+		end
 	end
 
+	class IBContracts::Test::TestGoal < Goal
+
+		EXPIRE = "DateTime.now.advance( seconds: 2 )"
+		CHRON_PERIOD_SECONDS = 10
+		CHILDREN = []
+
+		state_machine :machine_state, initial: :s_initial do
+			inject_provisioning()
+			inject_expiration()
+		end
+
+		def procreate(artifact, params)
+			user1 = User.find(3)
+			party1 = self.class.namespaced_const(:Party1).new
+			party1.user_id = user1.id
+			party1.contract_id = self.contract_id
+			party1.save!
+
+			user2 = User.find(4)
+			party2 = self.class.namespaced_const(:Party2).new
+			party2.user_id = user2.id
+			party2.contract_id = self.contract_id
+			party2.save!
+
+			valuable1 = IBContracts::Test::Valuable1.new( \
+				contract_id: self.contract_id,
+				value: TestHelper.the_hash[:value],
+				origin_id: party1.id, disposition_id: party1.id \
+			)
+			valuable1.contract_id = self.contract_id
+			valuable1.save!
+
+			valuable2 = IBContracts::Test::Valuable2.new( \
+				contract_id: self.contract_id,
+				value: TestHelper.the_hash[:value],
+				origin_id: party2.id, disposition_id: party2.id \
+			)
+			valuable2.contract_id = self.contract_id
+			valuable2.save!
+
+			super()
+
+			true
+		end
+	
+	end
+
+	class IBContracts::Test::TestArtifact < Artifact 
+
+		param_accessor :a, :b, :value_cents, :expire
+		monetize :value_cents
+	
+		attr_accessible :a, :b, :value, :expire
+	
+		PARAMS = { a: :no, b: :no, value: Money.parse("$25") }
+	
+	end
+
+	class IBContracts::Test::Valuable1 < Valuable
+		attr_accessible :value
+	end
+
+	class IBContracts::Test::Valuable2 < Valuable; end
+
+	class IBContracts::Test::Party1 < Party; end
+
+	class IBContracts::Test::Party2 < Party; end
+
+	class TestHelper
+		class << self
+			attr_accessor :goal_id, :artifact_class, :the_hash
+		end
+		def self.stash_return_values(goal_id, klass, hash)
+			self.goal_id = goal_id
+			self.artifact_class = klass
+			self.the_hash = hash
+		end
+	end
 end

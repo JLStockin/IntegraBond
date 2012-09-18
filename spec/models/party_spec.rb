@@ -8,26 +8,28 @@ end
 
 describe PartyTest do
 	it "should create a new instance given valid attributes" do
-		user = FactoryGirl.build(:buyer_user)
+		user = FactoryGirl.create(:buyer_user)
 		user.account.set_funds(1000, 50)
 		@party = PartyTest.new()
 		@party.user = user
-		transaction = Transaction.create!()
-		@party.transaction = transaction
+		@trans = IBContracts::Test::TestContract.create!()
+		@party.contract = @trans 
 		@party.save!
 	end
 
 	before(:each) do
-		user = FactoryGirl.build(:buyer_user)
+		user = FactoryGirl.create(:buyer_user)
 		user.account.set_funds(1000, 50)
-		transaction = Transaction.new()
+		@trans = IBContracts::Test::TestContract.create!()
 		@party = PartyTest.new()
 		@party.user = user
-		@party.transaction = transaction
-		user2 = FactoryGirl.build(:seller_user)
+		@party.contract = @trans 
+		@party.save!
+		user2 = FactoryGirl.create(:seller_user)
 		@party2 = PartyTest.new()
 		@party2.user = user2
-		@party2.transaction = transaction
+		@party2.contract = @trans 
+		@party2.save!
 	end
 
 end

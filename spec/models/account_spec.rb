@@ -15,8 +15,7 @@ describe Account do
 
 	before(:each) do
 		@user = FactoryGirl.build(:user_without_account)
-		@attr = FactoryGirl.attributes_for(:account)
-		@account = @user.build_account(@attr)
+		@account = @user.build_account()
 	end
 
 	# Account creation
@@ -49,8 +48,7 @@ describe Account do
 	end
 
 	it "shouldn't allow mass-assignment of funds" do
-		@attr.merge!(available_funds: 100, total_funds: 10)
-		expect {@user.create_account!(@attr)}.should raise_error
+		expect {@user.create_account!(funds: 100, hold_funds: 50)}.should raise_error
 	end
 
 	# user
@@ -266,12 +264,11 @@ describe "Account tranfers" do
 	before(:each) do
 		@from_user = FactoryGirl.build(:user_without_account)
 		@to_user = FactoryGirl.build(:user_without_account)
-		@attr = FactoryGirl.attributes_for(:account)
 
 		@from_account = @from_user.build_account(@attr)
 		@from_account.set_funds(HUNDRED, FIFTY)
 
-		@to_account = @to_user.build_account(@attr)
+		@to_account = @to_user.build_account()
 		@to_account.set_funds(HUNDRED, FIFTY)
 	end
 

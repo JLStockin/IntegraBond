@@ -6,132 +6,134 @@ module Test
 end
 end
 
-class IBContracts::Test::TestGoal < Goal
-
-	state_machine :machine_state, initial: :s_initial do
-		event :advance do
-			transition :s_ready => :s_state1
-			transition :s_state1 => :s_state2
-		end
-
-		inject_expiration()
-	end
-
-	def provision(*params)
-	end
-end
-
 describe Goal do
-	before(:all) do
-	end
-
-	it "should create a new instance given valid attributes" do
-		@goal = TestGoal.new() 
-		@transaction = FactoryGirl.create(:test_transaction)
-		@goal.transaction = @transaction 
-		@goal.save!
-		@transaction.goals << @goal
-	end
 
 	before(:each) do
-		@goal = IBContracts::Test::GoalTest.new()
+		@goal = IBContracts::Test::TestGoal.new()
+		@goal.contract_id = 1 
+		@goal.save!
 	end
 
 	it "should start out with state of :s_initial" do
 		@goal.machine_state_name.should be == :s_initial
 	end
 
-	it "should have a set of functions" do
-		@goal.should respond_to :set_expiration
-		@goal.should respond_to :active?
-		@goal.should respond_to :deactivate
+	it "should have an artifact" do
+		@contract.should respond_to(:artifact)
+	end
 
-		@goal.should respond_to :start
-		@goal.should respond_to :chron
-		@goal.should respond_to :provision
+	it "should have a set of instance methods" do
+		@trans.goals[0].should respond_to :active?
+		@trans.goals[0].should respond_to :deactivate
+		@trans.goals[0].should respond_to :deactivate_stepchildren
+		@trans.goals[0].should respond_to :deactivate_other
+		@trans.goals[0].should respond_to :get_expiration
+		@trans.goals[0].should respond_to :evaluate_expiration
+		@trans.goals[0].should respond_to :execute
+		@trans.goals[0].should respond_to :reverse_execution
+		@trans.goals[0].should respond_to :procreate
+		@trans.goals[0].should respond_to :expire
+
+
+		@trans.goals[0].should respond_to :start
+		@trans.goals[0].should respond_to :provision
+		@trans.goals[0].should respond_to :undo
+		@trans.goals[0].should respond_to :chron
+
+	end
+
+	it "should have a set of class methods" do
+		@trans.goals[0].class.should respond_to :artifact
+		@trans.goals[0].class.should respond_to :children
+		@trans.goals[0].class.should respond_to :stepchildren
+		@trans.goals[0].class.should respond_to :valid_goal?
+		@trans.goals[0].class.should respond_to :provision
+		@trans.goals[0].class.should respond_to :check_goals_for_expiration
+	end
+end
+
+describe Goal do
+
+	before(:each) do
+		@trans = IBContracts::Test::TestContract.create!()
+		@trans.start
+		Goal.provision( \
+			TestHelper.goal_id,
+			TestHelper.artifact_class,
+			TestHelper.the_hash \
+		)
 	end
 
 	it "should remember expires_at" do
 		time = DateTime.now
-		@goal.expires_at = time
-		@goal.save!
-		@goal.reload!
-		g.expires_at.to_i.should be == time.to_i
+		@trans.goals[0].expires_at = time
+		@trans.goals[0].save!
+		@trans.goals[0].reload
+		@trans.goals[0].expires_at.to_i.should be == time.to_i
 	end
 
-	it "should set_expiration with two args" do
+	it "should activate" do
 		time = DateTime.now()
 		time_plus_1s = time.advance(seconds: 1)
 
-		@goal.set_expiration(time, {seconds: 1})
-		@goal.expires_at.to_i.should be == time_plus_1s.to_i
-	end
-
-	it "should set_expiration with one arg" do
-		time = DateTime.now()
-		@goal.set_expiration(time)
-		@goal.expires_at.to_i.should be == time.to_i
+		@trans.goals[0].activate(time_plus_1s)
+		@trans.goals[0].expires_at.to_i.should be == time_plus_1s.to_i
 	end
 
 	it "should set_expiration with no args and throw error" do
-		expect {@goal.set_expiration()}.should raise_error
+		expect {@trans.goals[0].set_expiration()}.should raise_error
 	end
 
 	it "should have an active? that works" do
 		time = DateTime.now()
-		@goal.set_expiration(time.advance(seconds: -1))
-		@goal.active?.should be_true
-		@goal.chron
-		@goal.active?.should be_false
+		@trans.goals[0].activate(time.advance(seconds: -1))
+		@trans.goals[0].active?.should be_false
 	end
 
 	it "should have an active? that works" do
 		time = DateTime.now()
-		@goal.set_expiration(time.advance(seconds: 1))
-		@goal.active?.should be_true
-		@goal.chron
-		@goal.active?.should be_true
+		@trans.goals[0].activate(time.advance(seconds: 1))
+		@trans.goals[0].active?.should be_true
+		@trans.goals[0].chron
+		@trans.goals[0].active?.should be_true
 		sleep(2)
-		@goal.chron
-		@goal.active?.should be_false
+		@trans.goals[0].chron
+		@trans.goals[0].active?.should be_false
+	end
+
+	it "should have a 'check_goals_for_expiration' that works" do
+		time = DateTime.now()
+		@trans.goals[0].activate(time.advance(seconds: 1))
+		@trans.goals[0].active?.should be_true
+		@trans.goals[0].activate(time.advance(seconds: -1))
+		Goal.check_goals_for_expiration
+		@trans.goals[0].active?.should be_false
 	end
 
 	it "should have a deactivate that works" do
 		time = DateTime.now()
-		@goal.set_expiration(time.advance(seconds: 1))
-		@goal.active?.should be_true
-		@goal.deactivate()
-		@goal.active?.should be_false
-	end
-
-	it "should transition to :s_state1, then :s_state2" do
-		@goal.advance
-		@goal.machine_state_name.should be == :s_state1
-		@goal.advance
-		@goal.machine_state_name.should be == :s_state2
+		@trans.goals[0].activate(time.advance(seconds: 1))
+		@trans.goals[0].active?.should be_true
+		@trans.goals[0].deactivate()
+		@trans.goals[0].active?.should be_false
 	end
 
 	it "should then remember its state" do
-		@goal.advance
-		@goal.advance
-		@goal.reload
-		@goal.machine_state_name.should be == :s_state2
-	end
-
-	it "should expire" do
-		@goal.set_expiration(DateTime.now.advance(seconds: 2))
-		@goal.chron
-		@goal.active?.should be_true
-		sleep(3)
-		@goal.chron
-		@goal.active?.should be_false
+		@trans.goals[0].reload
+		@trans.goals[0].machine_state_name.should be == :s_idle
 	end
 
 	it "should respond to a chron event" do
-		@goal.active?.should be_true
-		@goal.chron
-		sleep(2)
-		@goal.chron
-		@goal.active?.should be_false
+		@trans.goals[0].active?.should be_true
+		sleep(3)
+		@trans.goals[0].active?.should be_false
 	end
+
+	it "should expire" do
+		@trans.goals[0].activate(DateTime.now.advance(seconds: 2))
+		@trans.goals[0].active?.should be_true
+		sleep(3)
+		@trans.goals[0].active?.should be_false
+	end
+
 end

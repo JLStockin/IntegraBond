@@ -28,7 +28,7 @@ ActiveRecord::Schema.define(:version => 20120816155038) do
   create_table "artifacts", :force => true do |t|
     t.string   "type"
     t.integer  "contract_id"
-    t.string   "_ar_data"
+    t.text     "_ar_data"
     t.datetime "created_at",  :null => false
     t.datetime "updated_at",  :null => false
   end
@@ -39,7 +39,7 @@ ActiveRecord::Schema.define(:version => 20120816155038) do
     t.string   "type"
     t.integer  "originator_id"
     t.string   "machine_state"
-    t.string   "_ar_data"
+    t.text     "_ar_data"
     t.datetime "created_at",    :null => false
     t.datetime "updated_at",    :null => false
   end
@@ -48,7 +48,7 @@ ActiveRecord::Schema.define(:version => 20120816155038) do
     t.string   "type"
     t.integer  "contract_id"
     t.string   "machine_state"
-    t.string   "_ar_data"
+    t.text     "_ar_data"
     t.datetime "expires_at"
     t.datetime "created_at",    :null => false
     t.datetime "updated_at",    :null => false
@@ -97,7 +97,7 @@ ActiveRecord::Schema.define(:version => 20120816155038) do
     t.integer  "value_cents"
     t.integer  "origin_id"
     t.integer  "disposition_id"
-    t.string   "_ar_data"
+    t.text     "_ar_data"
     t.datetime "created_at",     :null => false
     t.datetime "updated_at",     :null => false
   end
