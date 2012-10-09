@@ -9,5 +9,6 @@ class CreateParties < ActiveRecord::Migration
     end
 
 	add_index :parties, :contract_id
+	add_index :parties, :user_id
   end
 end

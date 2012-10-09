@@ -53,12 +53,35 @@ describe User do
 		end
 	end
 
+	it "should accept valid phone numbers" do
+    	phones = %w/707-498-8556 415-516-2583 (707)498-1234/
+	    phones.each do |phone|
+			valid_phone_user = User.new(@attr.merge(:phone => phone))
+			valid_phone_user.should be_valid
+		end
+	end
+
+	it "should reject invalid invalid phone numbers" do
+		phones = %w[3-545-6113 45-1234 44.22]
+		phones.each do |phone|
+			invalid_phone_user = User.new(@attr.merge(:phone => phone))
+		 	invalid_phone_user.should_not be_valid
+		end
+	end
 
 	it "should reject duplicate email addresses" do
 		# Put a user with given email address into the database.
 		User.create!(@attr)
 		user_with_duplicate_email = User.new(@attr)
 		user_with_duplicate_email.should_not be_valid 
+	end
+
+	it "should reject duplicate phone numbers" do
+		# Put a user with given phone number into the database.
+		@attr.merge!(:email => "buffy@example.com")
+		User.create!(@attr)
+		user_with_duplicate_phone= User.new(@attr)
+		user_with_duplicate_phone.should_not be_valid 
 	end
 
 	it "should reject email addresses identical up to case" do
@@ -131,17 +154,28 @@ describe User do
 		describe "authenticate method" do
 
 			it "should return nul on email/password mismatch" do
-				wrong_password_user = User.authenticate(@attr[:email], "wrongpass")
+				wrong_password_user = User.authenticate(@attr[:email], \
+					@attr[:phone], "wrongpass")
 				wrong_password_user.should be_nil
 			end
 
 			it "should return nil for an email address with no user" do
-				nonexistent_user = User.authenticate("bar@foo.com", @attr[:password])
+				nonexistent_user = User.authenticate("bar@foo.com", nil, @attr[:password])
+				nonexistent_user.should be_nil
+			end
+
+			it "should return nil for a phone number with no user" do
+				nonexistent_user = User.authenticate(nil, "650-123-4567",@attr[:password])
 				nonexistent_user.should be_nil
 			end
 
 			it "should return the user on email/password match" do
-				matching_user = User.authenticate(@attr[:email], @attr[:password])
+				matching_user = User.authenticate(@attr[:email], nil, @attr[:password])
+				matching_user.should == @user
+			end
+
+			it "should return the user on phone/password match" do
+				matching_user = User.authenticate(nil, @attr[:phone], @attr[:password])
 				matching_user.should == @user
 			end
 		end

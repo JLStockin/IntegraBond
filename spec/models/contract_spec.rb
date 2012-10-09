@@ -88,7 +88,7 @@ describe "Transaction (Contract instance)" do
 	describe "initial setup" do
 
 		it "should create a valid contract" do
-			@contract = IBContracts::Test::TestContract
+			@contract = IBContracts::Bet::ContractBet
 			@trans	= @contract.create!()
 		end
 
@@ -96,7 +96,7 @@ describe "Transaction (Contract instance)" do
 
 	describe "start" do
 		before(:each) do
-			@contract = IBContracts::Test::TestContract
+			@contract = IBContracts::Bet::ContractBet
 			@trans	= @contract.create!()
 			@trans.start()
 		end
@@ -121,7 +121,7 @@ describe "Transaction (Contract instance)" do
 		end
 
 		it "should have the right goal" do
-			@trans.class.first_goals[0].should be == :TestGoal
+			@trans.class.children[0].should be == :GoalTenderOffer
 		end
 		
 		it "should have a request_provisioning method" do
@@ -141,49 +141,32 @@ describe "Transaction (Contract instance)" do
 		end
 
 		it "should have a working expiration_for method" do
-			goal = @trans.class.first_goals[0]
+			goal = @trans.class.children[0]
 			@trans.expiration_for(goal).should_not be_nil
 		end
 
 		it "should have a working provision method" do
-			@trans.model_instances(@trans.artifacts, :TestArtifact).should be_nil 
-			Goal.provision(\
-				TestHelper.goal_id,
-				TestHelper.artifact_class,		
-				TestHelper.the_hash\
-			)
-			@trans.model_instances(@trans.artifacts, :TestArtifact).count.should be > 0
+			g = provision_first_goal
+			Artifact.find_by_goal_id(g.id).count.should be > 0
 		end
 
 		it "should have an artifact with the right values" do
-			Goal.provision(\
-				TestHelper.goal_id,
-				TestHelper.artifact_class,
-				TestHelper.the_hash\
-			)
-			artifact = (@trans.model_instances(@trans.artifacts, :TestArtifact))[0]
+			g = provision_first_goal
+			artifact = Artifact.find_by_goal_id(g.id)[0]
 			artifact.a.should be == "yes" 
 			artifact.b.should be == "yes" 
 			artifact.value_cents.should be == Money.parse("$100").cents
 		end
 
 		it "should have 3 Parties" do 
-			Goal.provision(\
-				TestHelper.goal_id,
-				TestHelp.artifact_class,
-				TestHelper.the_hash\
-			)
-			@trans.goals[0].advance
+			g = provision_first_goal
+			g.chron
 			@trans.parties.count.should be == 3
 		end
 
 		it "should have the right three parties" do
-			Goal.provision(\
-				TestHelper.goal_id,
-				TestHelper.artifact_class,
-				TestHelper.the_hash\
-			)
-			@trans.goals[0].advance
+			g = provision_first_goal
+			g.chron
 			@trans.model_instance(@trans.parties, :Party1).count.should be > 0
 			@trans.model_instance(@trans.parties, :Party2).count.should be > 0
 		end
@@ -193,12 +176,8 @@ describe "Transaction (Contract instance)" do
 		end
 
 		it "should have valuables" do
-			Goal.provision(\
-				TestHelper.goal_id,
-				TestHelper.artifact_class,
-				TestHelper.the_hash\
-			)
-			@trans.goals[0].advance
+			g = provision_first_goal
+			g.chron
 			@trans.valuables.count.should be == 2
 
 			@trans.valuables.each do |valuable|
@@ -213,29 +192,25 @@ describe "Transaction (Contract instance)" do
 
 	describe "internal states" do
 		before(:each) do
-			@contract = IBContracts::Test::TestContract
+			@contract = IBContracts::Bet::ContractBet
 			@trans	= @contract.create!()
 			@trans.start()
-			Goal.provision(\
-				TestHelper.goal_id,
-				TestHelper.artifact_class,
-				TestHelper.the_hash\
-			)
+			@g = provision_first_goal
 		end
 
 		it "should have a :s_ready state" do
-			@trans.goals[0].machine_state_name.should be == :s_create_objects
+			@g.machine_state_name.should be == :s_create_objects
 		end
 
 		it "should be in the right state after an :advance" do
-			@trans.goals[0].advance
-			@trans.goals[0].machine_state_name.should be == :s_ready
-			@trans.goals[0].advance()
-			@trans.goals[0].machine_state_name.should be == :s_state1
+			@g.chron
+			@g.machine_state_name.should be == :s_ready
+			@g.chron
+			@g.machine_state_name.should be == :s_completed
 		end
 
 		it "should working activate(), deactivate(), active?() methods" do
-			goal = (@trans.model_instance(@trans.goals, :TestGoal))[0]
+			goal = Goal.find(1)
 			goal.activate(DateTime.now.advance(seconds: 2))
 			goal.active?.should be_true
 			goal.deactivate()

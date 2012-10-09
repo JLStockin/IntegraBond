@@ -14,27 +14,37 @@ module IBContracts::Bet
 		#
 		#########################################################################
 
-		ARTIFACT = :OfferRejection
+		ARTIFACT = nil
+		EXPIRE_ARTIFACT = :OfferRejection 
 		CHILDREN = []
-		STEPCHILDREN = [:GoalAcceptOffer]
+		FAVORITE_CHILD = false 
+		STEPCHILDREN = [:GoalAcceptOffer, :GoalCancelOffer]
+		AVAILABLE_TO = [:Party2]
+		DESCRIPTION = "Reject offer"
 
-		def execute(artifact)
-			self.contract.reverse_completed_goals()
-			self.contract.disable_active_goals()
-			true
+		def execute()
+			second_party = self.contract.model_instance(:Party2)
+			msg0 = "\n\nOffer rejected by #{second_party.user.first_name} "\
+				+ "#{second_party.last_name}."
+			Rails.logger.info(msg0)
+			msg1 = "Transaction cancelled."
+			Rails.logger.info(msg1)
+
+			cancel_transaction()
 		end
 
 		def reverse_execution()
+			true
 		end
 
 		def expire()
+			# This goal should never time out.
+			false	
 		end
 	end
 
 	class OfferRejection < Artifact
-		PARAMS = {\
-			origin: :Party2
-		}
+		PARAMS = {}
 	end
 
 end

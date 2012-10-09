@@ -28,6 +28,7 @@ ActiveRecord::Schema.define(:version => 20120816155038) do
   create_table "artifacts", :force => true do |t|
     t.string   "type"
     t.integer  "contract_id"
+    t.integer  "goal_id"
     t.text     "_ar_data"
     t.datetime "created_at",  :null => false
     t.datetime "updated_at",  :null => false
@@ -38,7 +39,6 @@ ActiveRecord::Schema.define(:version => 20120816155038) do
   create_table "contracts", :force => true do |t|
     t.string   "type"
     t.integer  "originator_id"
-    t.string   "machine_state"
     t.text     "_ar_data"
     t.datetime "created_at",    :null => false
     t.datetime "updated_at",    :null => false
@@ -66,6 +66,7 @@ ActiveRecord::Schema.define(:version => 20120816155038) do
   end
 
   add_index "parties", ["contract_id"], :name => "index_parties_on_contract_id"
+  add_index "parties", ["user_id"], :name => "index_parties_on_user_id"
 
   create_table "sessions", :force => true do |t|
     t.string   "session_id", :null => false
@@ -81,6 +82,8 @@ ActiveRecord::Schema.define(:version => 20120816155038) do
     t.string   "first_name"
     t.string   "last_name"
     t.string   "email"
+    t.integer  "normalized_phone"
+    t.text     "_ar_data"
     t.string   "encrypted_password"
     t.string   "salt"
     t.boolean  "admin",              :default => false
@@ -89,6 +92,7 @@ ActiveRecord::Schema.define(:version => 20120816155038) do
   end
 
   add_index "users", ["email"], :name => "index_users_on_email", :unique => true
+  add_index "users", ["normalized_phone"], :name => "index_users_on_normalized_phone", :unique => true
 
   create_table "valuables", :force => true do |t|
     t.string   "type"

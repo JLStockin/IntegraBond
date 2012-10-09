@@ -5,6 +5,9 @@
 				<%= gravatar_for @user %>
 				<%= "#{@user.first_name} #{@user.last_name}" %>
 			</h1>
+			<h3>
+				<%= "as #{@user.primary_id}" %>
+			</h3>
 		</td>
 		<td class="sidebar round">
 			<strong>Name</strong> <%= "#{@user.first_name} #{@user.last_name}" %><br />

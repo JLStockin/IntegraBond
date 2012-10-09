@@ -57,6 +57,17 @@ RSpec.configure do |config|
 		user
 	end
 
+	def provision_first_goal
+		g = Goal.find(1)
+		@trans.model_instances(@trans.artifacts, g.class.artifact).should be_nil 
+		Goal.provision(\
+			g.id,
+			g.class.artifact,
+			(g.namespaced_class(g.class.artifact))::PARAMS\
+		)
+		g
+	end
+
 	class IBContracts::Test::TestContract < Contract::Base
 
 		VERSION = "0.1"

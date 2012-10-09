@@ -3,6 +3,7 @@ class CreateArtifacts < ActiveRecord::Migration
 		create_table :artifacts do |t|
 			t.string	:type
 			t.integer	:contract_id
+			t.integer	:goal_id
 			t.text		:_ar_data
 
 			t.timestamps

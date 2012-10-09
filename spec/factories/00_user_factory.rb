@@ -25,12 +25,16 @@ FactoryGirl.define do
 		factory :user, class: User do |user|
 			association	:account,		factory: :buyer_account
 			user.email					"seymore.butts@example.com"
+			user.phone					"707-555-1212"
+			user.use_phone_as_primary	false	
 			user.first_name				"Seymore"
 			user.last_name				"Butts"
 		end
 
 		factory :buyer_user, class: User do |user|
 			association	:account,		factory: :buyer_account
+			user.phone					"707-505-1201"
+			user.use_phone_as_primary	false	
 			user.email
 			user.first_name
 			user.last_name
@@ -39,6 +43,8 @@ FactoryGirl.define do
 		factory :seller_user, class: User do |user|
 			association	:account,		factory: :seller_account
 			user.email
+			user.phone					"707-505-1203"
+			user.use_phone_as_primary	true	
 			user.first_name
 			user.last_name
 		end

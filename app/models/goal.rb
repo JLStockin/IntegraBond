@@ -28,7 +28,7 @@
 #	add_expiration -- the framework will deactivate your Goal at time 'expires_at'
 #		(if you have called 'add_expiration'), adding the following methods too:
 #	active?() --
-#	deactivate() --
+#	disable() --
 # 
 #
 require 'active_support/time'
@@ -37,7 +37,7 @@ require 'squeel'
 #
 # Monkey-patch StateMachine to add 'inject_provisioning' and 'inject_expiration' methods
 # so that those two macros are available to the Goal class.  'inject_expiration' also
-# adds the 'active?', and 'deactivate' methods.
+# adds the 'active?', and 'disable' methods.
 #
 # The Artifact_class (or list of them) passed up to the controller in request_provisioning
 # isn't interpreted by the Goal.  It can, for example, be a module or list instead, and contain 
@@ -50,14 +50,17 @@ StateMachine::Machine.class_eval do
 		# -> start
 		event :start do
 			transition :s_initial => :s_provisioning
+			transition :s_cancelled => :s_provisioning
 		end
-		before_transition :s_initial => :s_provisioning do |goal, transition|
+		before_transition [:s_initial, :s_cancelled] => :s_provisioning do |goal, transition|
 			this_artifact_type = goal.class.artifact()
-			this_artifact_class = goal.namespaced_const(this_artifact_type)
+			unless this_artifact_type.nil? then
+				this_artifact_class = goal.namespaced_class(this_artifact_type)
 
-			goal.contract.class.request_provisioning(
-				goal.id, this_artifact_class, this_artifact_class::PARAMS \
-			)
+				goal.contract.class.request_provisioning(
+					goal.id, this_artifact_class, this_artifact_class.params \
+				)
+			end
 			goal.expires_at = goal.get_expiration()
 			true
 		end
@@ -73,19 +76,31 @@ StateMachine::Machine.class_eval do
 
 		before_transition :s_provisioning => :s_completed do |goal, transition|
 			artifact_type = transition.args[0]
-			artifact_class = goal.namespaced_const(artifact_type)
-			artifact = artifact_class.new()
-			params = transition.args[1]
-			artifact.contract_id = goal.contract_id
-			artifact.mass_assign_params(params)
-			artifact.save!
+			unless artifact_type.nil?  then
+				artifact_class = goal.namespaced_class(artifact_type)
+				artifact = artifact_class.new()
+				params = transition.args[1]
+				artifact.contract_id = goal.contract_id
+				artifact.goal_id = goal.id
+				artifact.mass_assign_params(params)
+				artifact.save!
+			end
 			true
 		end
 
 		after_transition :s_provisioning => :s_completed do |goal, transition|
-			goal.deactivate_stepchildren()
-			goal.execute()
-			goal.procreate()
+			if goal.execute() then
+				goal.disable_stepchildren()
+				goal.procreate()
+			end
+			true
+		end
+
+		event :disable do
+			transition [:s_initial, :s_provisioning] => :s_cancelled
+		end
+		after_transition [:s_initial, :s_provisioning] => :s_cancelled do |goal, transition|
+			Rails.logger.info("Goal #{goal.class.const_to_symbol(goal.class)} disabled.")
 			true
 		end
 	end
@@ -111,9 +126,9 @@ StateMachine::Machine.class_eval do
 		before_transition :s_provisioning => :s_expired do |goal, transition|
 			return false if goal.expires_at == :never
 
-			if goal.expires_at.to_i <= DateTime.now.to_i then
+			if goal.expires_at.to_i <= DateTime.now.in_time_zone.to_i then
 				goal.expire()
-				true 
+				true
 			else
 				false
 			end
@@ -123,27 +138,22 @@ StateMachine::Machine.class_eval do
 
 			def procreate()
 				self.class.children().each do |goal_type|
-					klass = self.namespaced_const(goal_type)
-					goal = klass.new()
-					goal.contract_id = self.contract_id
-					goal.save!
+					goal = self.contract.model_instance(goal_type)
+					if goal.nil? then
+						klass = self.namespaced_class(goal_type)
+						goal = klass.new()
+						goal.contract_id = self.contract_id
+						goal.save!
+					end
 					goal.start()
 				end
 			end
 
-			def deactivate()
-				if self.can_provision? or self.can_start? then
-					self.expires_at = DateTime.now().advance(seconds: -1)
-					self.save!
-					self.chron
-				end
-			end
-
-			def deactivate_stepchildren()
+			def disable_stepchildren()
 				self.class.stepchildren().each do |goal_type|
 					stepchild = self.contract.model_instance(goal_type)
 					raise "stepchild '#{goal_type}' not found" if stepchild.nil?
-					stepchild.deactivate()
+					stepchild.disable()
 				end
 			end
 
@@ -152,13 +162,30 @@ StateMachine::Machine.class_eval do
 				return (self.can_provision? or self.can_start? or self.can_undo?)
 			end
 
-			def deactivate_other(other)
+			def disable_other(other)
 				obj = self.contract.model_instance(other)
-				obj.deactivate
+				obj.disable
 			end
 
 			#
-			# First goal doesn't have an artifact, so its expiration is
+			# Can be called by expire when a Goal times out.  Reverses and disables
+			# all the goals.  Creates the EXPIRE_ARTIFACT if it's defined by the Goal.
+			#
+			def cancel_transaction()
+				self.contract.reverse_completed_goals(self)
+				self.contract.disable_active_goals(self)
+
+				unless self.class.expire_artifact.nil? then
+					artifact = self.class.namespaced_class(self.class.expire_artifact).new()
+					artifact.contract_id = self.contract_id
+					artifact.save!
+				end
+
+				true
+			end
+
+			#
+			# The first goal doesn't have an artifact, so its expiration is
 			# a constant obtained from the offer artifact class.
 			# The rest of the expirations have intelligent defaults, but
 			# can be modified by provisioning the offer artifact.
@@ -166,8 +193,8 @@ StateMachine::Machine.class_eval do
 			def get_expiration()
 				my_type = self.class.const_to_symbol(self.class)
 				offer_artifact_type = self.contract.class.artifact
-				offer_artifact_class = self.namespaced_const(offer_artifact_type)
-				offer_artifact = self.contract.model_instance(offer_artifact_type)
+				offer_artifact_class = self.namespaced_class(offer_artifact_type)
+				offer_artifact = self.contract.latest_model_instance(offer_artifact_type)
 
 				expirations = ( offer_artifact.nil? ) \
 					?  offer_artifact_class::PARAMS[:expirations]\
@@ -214,6 +241,7 @@ end
 
 class Goal < ActiveRecord::Base
 	belongs_to :contract, class_name: Contract::Base, foreign_key: :contract_id
+
 	attr_accessible :contract_id
 
 	validates :contract_id, presence: true
@@ -224,16 +252,37 @@ class Goal < ActiveRecord::Base
 		self::ARTIFACT
 	end
 
+	def self.expire_artifact
+		self::EXPIRE_ARTIFACT
+	end
+
 	def self.children
 		self::CHILDREN
+	end
+
+	def self.favorite_child?
+		self::FAVORITE_CHILD
 	end
 
 	def self.stepchildren
 		self::STEPCHILDREN
 	end
 
+	def self.available_to
+		self::AVAILABLE_TO
+	end
+
+	def self.description
+		self::DESCRIPTION
+	end
+
 	class GoalInitializer
 		def self.before_create(record)
+
+			# Workaround for rails bug
+			time = DateTime.now
+			record.created_at = time
+			record.updated_at = time
 			true
 		end
 	end
@@ -241,7 +290,10 @@ class Goal < ActiveRecord::Base
 	before_create GoalInitializer
 
 	def self.valid_goal?
-		constants = [ :ARTIFACT, :CHILDREN, :STEP_CHILDREN ]
+		constants = [ :ARTIFACT, :EXPIRE_ARTIFACT, :CHILDREN,
+			:STEP_CHILDREN, :AVAILABLE_TO, :DESCRIPTION,
+			:FAVORITE_CHILD \
+		]
 		valid = true
 		constants.each do |constant|
 			valid = valid and valid_constant? constant

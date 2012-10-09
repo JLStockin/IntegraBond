@@ -31,7 +31,7 @@
 # created_at.  The syntax for this is Yaml:
 # 
 # { GoalCreateOffer: :never } =>		GoalOffer doesn't expire (it gets
-#                                       deactivated by GoalAccept)
+#                                       disabled by GoalAccept)
 #
 # { GoalAcceptOffer: { GoalTenderOffer: "lambda {|g| g.advance(:hours => 48) }" } }
 #                             =>		GoalAcceptOffer expires 48 hrs after
@@ -81,25 +81,6 @@ class Contract::Base < ActiveRecord::Base
 
 	# Validations
 
-	########################################################################################
-	#
-	# Basic class-based instance access methods.  Unlike the class-level methods,
-	# which fetch symbols, these all fetch instance objects (Valuables, Partys, etc)
-	#
-	def model_instances(subclass_sym)
-		subclass = self.namespaced_const(subclass_sym)
-		klass = subclass.superclass
-		ret = instance_eval("self.#{klass.to_s.downcase.pluralize}.select\
-			{|r| r.class == subclass}")
-		ret
-	end
-
-	def model_instance(subclass_sym)
-		values = model_instances(subclass_sym)
-		raise "model_instances for '#{subclass_sym}' returned more than one" if values.count > 1
-		values[0]
-	end
-
 	#
 	# Start the transaction.
 	#
@@ -107,28 +88,56 @@ class Contract::Base < ActiveRecord::Base
 		seed_transaction
 
 		self.class.children().each do |goal_klass_sym|
-			goal = self.namespaced_const(goal_klass_sym).create!(:contract_id => self.id) \
-				if model_instance(goal_klass_sym).nil?
+			goal = model_instance(goal_klass_sym)
+			goal = self.namespaced_class(goal_klass_sym).create!(:contract_id => self.id) \
+				if goal.nil?
 			goal.start()
 		end
 	end
 
+	########################################################################################
+	#
+	# Basic class-based instance access methods.  Unlike the class-level methods,
+	# which fetch symbols, these all fetch instance objects (Valuables, Partys, etc)
+	#
+	def model_instances(subclass_sym)
+		subclass = self.namespaced_class(subclass_sym)
+		klass = subclass.superclass
+		ret = instance_eval("#{klass.to_s.downcase.pluralize}.all.select\
+			{|r| r.class == #{subclass}}")
+		ret
+	end
+
+	#
+	# Use this when you expect exactly one
+	#
+	def model_instance(subclass_sym)
+		values = model_instances(subclass_sym)
+		raise "model_instances for '#{subclass_sym}' returned more than one" if values.count > 1
+		values[0]
+	end
+
+	def latest_model_instance(subclass_sym)
+		values = model_instances(subclass_sym)
+		values[-1]
+	end
+
 	# 
 	# Halt/abort the transaction by undo-ing and disabling each Goal that has executed.
-	# Undo merely shuffles cash around.  We don't destroy objects.
+	# Undo merely shuffles cash around (we don't destroy objects).
 	# Each goal will only respond to, at most, one of these commands.
 	#
-	def reverse_completed_goals()
+	def reverse_completed_goals(caller)
 		gls = self.goals.reverse
 		gls.each do |goal|
-			goal.undo() if goal.can_undo?
+			goal.undo() if goal != caller and goal.can_undo?
 		end
 	end
 
-	def disable_active_goals()
-		gls = self.goals.reverse
+	def disable_active_goals(caller)
+		gls = self.goals.reverse # reverse order of goals
 		gls.each do |goal|
-			goal.deactivate() if goal.can_provision?
+			goal.disable() if goal != caller and goal.can_provision?
 		end
 	end
 
@@ -149,6 +158,64 @@ class Contract::Base < ActiveRecord::Base
 	#
 	def self.request_provisioning(goal_id, artifact_sym, initial_params)
 		raise "Contract.request_provisioning must be overriden in subclass"
+	end
+
+	#
+	# Get the active Goals available to a Party.  Pass party = :all to get
+	# all active goals.
+	#
+
+	def active_goals(party)
+		raise "party must be an instance of Party"\
+			unless (party.instance_of?(Party) or party == :all)
+		p_sym = self.class.const_to_symbol(party) unless party == :all
+		gls = self.goals.all
+		return nil if gls.nil? or gls.empty?
+		ret = gls.select do |g|
+			g.machine_state == "s_provisioning"\
+				and\
+			(party == :all) ? true : g.available_to.include?(p_sym)
+		end
+		ret
+	end
+	
+	def active?
+		active_goals(:all).nil? ? false : true
+	end
+
+	#
+	# Returns either an Artifact, or the class of the Artifact that would be
+	# created if the most recent Goal with (favorite_child? == true) succeeds.
+	#
+	def status_object
+		gls = active_goals(:all)
+		if gls.nil? or gls.empty? then
+			return artifacts.last
+		else
+			return current_success_goal().class.artifact
+		end
+	end
+
+	def current_success_goal
+		gls = active_goals(:all)
+		return nil if gls.nil?
+
+		gls.each do |goal|
+			return goal if goal.class.favorite_child?
+		end
+		return nil
+	end
+
+	def party_for(user)
+		Party.find_by_user_id(user.id)
+	end
+
+	#
+	# For a given user, return the list of parties aggregated from all their transactions
+	#
+	def self.transaction_associates(user)
+		parties = Party.find(:all, :conditions => ["contract_id in (?)", user.contracts])
+		parties
 	end
 
 	#
@@ -199,6 +266,9 @@ class Contract::Base < ActiveRecord::Base
 		self::CHILDREN
 	end
 
+	#
+	# This Artifact is used by first goal to get its expiration
+	#
 	def self.artifact
 		self::ARTIFACT
 	end
@@ -210,8 +280,7 @@ class Contract::Base < ActiveRecord::Base
 	# Populate fields with defaults for new records
 
 	def seed_transaction
-		raise "contract class hierarchy improperly formed" if self.class == Contract::Base
-		self.machine_state = :s_initial	# in case ever used
+		raise "Contract::Base must be subclassed" if self.class == Contract::Base
 		self.save!
 		
 		# Create the party corresponding to admin

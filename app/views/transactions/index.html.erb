@@ -1,0 +1,37 @@
+<h1>Your Transactions</h1>
+
+<table>
+	<% unless @transaction_data.nil? or @transaction_data.empty? then %>
+		<tr>
+			<th>Status</th>
+			<th>Contract</th>
+			<% @party_classes.each do |party_class| %>
+				<% unless party_class == AdminParty then %>
+					<th><%= party_class.role_name %></th>
+				<% end %>
+			<% end %>
+		</tr>
+
+		<% @transaction_data.each_pair do |trans, parties| %>
+			<tr>
+				<td><%= link_to "#{status_for(trans)}", transaction_path(trans) %>
+				</td>
+				<td><%= trans.class.contract_name %></td>
+				<% @party_classes.each do |klass| %>
+					<% if parties[klass].nil? then %>
+						<td>-</td>
+					<% elsif klass != AdminParty then %>
+						<td><%= link_to "#{parties[klass].user_identifier}",
+							parties[klass].user %>
+						</td>
+					<% end %>
+				<% end %>
+			</tr>
+		<% end %>
+	<% else %>
+		<tr>
+			<td>You don't have any transactions</td>
+			<td>-</td>
+		</tr>
+	<% end %>
+</table>

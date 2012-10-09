@@ -1,4 +1,15 @@
 IntegraBond::Application.routes.draw do
+  resources :transactions
+if false
+  get "transaction/index"
+
+  get "transaction/edit"
+
+  get "transaction/new"
+
+  get "transaction/show"
+end
+
   resources :goals
 
   resources :xactions
@@ -13,7 +24,7 @@ IntegraBond::Application.routes.draw do
   	match '/signout', :to => 'sessions#destroy'
   	match '/about', :to => 'pages#about'
   	match '/help', :to => 'pages#help'
-	root :to => 'pages#home'
+	root :to => 'transactions#index'
 
   # The priority is based upon order of creation:
   # first created -> highest priority.

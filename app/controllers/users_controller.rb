@@ -31,7 +31,6 @@ class UsersController < ApplicationController
 		else
 			@user = User.new(params[:user])
 			@account = @user.build_account() # Need to extract the account params
-			@account.user_id = @user.id		# Needed?
 
 			if @user.save
 				sign_in @user

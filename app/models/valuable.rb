@@ -60,7 +60,7 @@ class Valuable < ActiveRecord::Base
 			xaction.amount = valuable.value
 			xaction.hold = 0 
 			xaction.primary = valuable.origin.user.account
-			xaction.save!
+			xaction.save
 		end
 
 		# :release
@@ -72,7 +72,7 @@ class Valuable < ActiveRecord::Base
 			xaction.amount = valuable.value
 			xaction.hold = 0 
 			xaction.primary = valuable.origin.user.account
-			xaction.save!
+			xaction.save
 		end
 
 		# :transfer
@@ -86,7 +86,7 @@ class Valuable < ActiveRecord::Base
 			xaction.hold = valuable.value
 			xaction.primary = valuable.origin.user.account
 			xaction.beneficiary = valuable.disposition.user.account
-			xaction.save!
+			xaction.save
 		end
 
 		# :dispute
@@ -98,7 +98,7 @@ class Valuable < ActiveRecord::Base
 			xaction.amount = valuable.value * 2
 			xaction.hold = 0 
 			xaction.primary = valuable.disposition.user.account
-			xaction.save!
+			xaction.save
 		end
 
 		# :adjudicate
@@ -122,7 +122,7 @@ class Valuable < ActiveRecord::Base
 				xaction.hold = 0 
 				xaction.primary = valuable.disposition.user.account # now 2nd party's accnt
 			end
-			xaction.save!
+			xaction.save
 		end
 	end
 

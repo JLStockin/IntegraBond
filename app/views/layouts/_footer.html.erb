@@ -2,7 +2,9 @@
 	<nav class="round">
   	<ul>
 	   		<li><%= link_to "How it Works", about_path %></li>
-			<li><%= link_to "Create Account", signup_path %></li>
+			<% if !signed_in? %>
+				<li><%= link_to "Create Account", signup_path %></li>
+			<% end %>
 		</ul>
 	</nav>
 </footer>

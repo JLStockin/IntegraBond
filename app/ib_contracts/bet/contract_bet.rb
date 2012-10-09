@@ -2,6 +2,7 @@
 #
 #
 #
+
 module IBContracts; end
 module IBContracts::Bet; end
 
@@ -22,9 +23,10 @@ module IBContracts::Bet
 			{:Fees => "Transaction fees to be paid by winner"},
 		]
 
-		CHILDREN = [:GoalTenderOffer, :GoalCancelOffer]
+		CHILDREN = [:GoalTenderOffer]
 
-		ARTIFACT = :OfferArtifact		# GoalTenderOffer constructs one of these
+		ARTIFACT = :OfferArtifact	# Needed to look up expiration for first goal, since 
+									# we can't yet reference any artifacts
 
 		DEFAULT_BOND = {:Party1 => Money.parse("$20"), :Party2 => Money.parse("$20")}
 
@@ -75,44 +77,3 @@ module IBContracts::Bet
 end # IBContracts::Bet
 
 require File.dirname(__FILE__) + '/goal_tender_offer'
-
-class P
-
-	# Controller response to a provisioning request
-	def self.prov
-		puts "Goals: "
-		goals = Goal.where(machine_state: "s_provisioning")
-		goals.each do |g|
-			puts "#{g.inspect}"
-		end
-		print "Goal ID? > "
-		goal_id = gets.chop.to_i
-
-		g = Goal.find(goal_id)
-		puts "Select params from params shown to configure as {a: 5, b: 10} etc."
-		puts "#{(g.namespaced_const(g.class.artifact))::PARAMS}"
-		print "\>  "
-		params = gets.chomp
-		params = eval params
-
-		all_params = (g.namespaced_const(g.class.artifact))::PARAMS
-		all_params.merge!(params)
-puts "params for artifact: '#{all_params}'"
-		g.provision(g.class.artifact, all_params)
-	end
-
-	def to_s
-		"-- #{goal_id}) #{Goal.find(goal_id).class}"
-	end
-end
-
-def cls
-	system "cls"
-end
-
-def prov
-	P.prov
-end
-
-@contract = IBContracts::Bet::ContractBet.new
-@contract.start

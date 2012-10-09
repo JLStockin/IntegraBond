@@ -21,26 +21,42 @@ module IBContracts::Bet
 		#
 		#########################################################################
 
-		ARTIFACT = :OfferCancel
+		ARTIFACT = nil 
+		EXPIRE_ARTIFACT = :OfferWithdrawl
 		CHILDREN = []
-		STEPCHILDREN = [:GoalTenderOffer]
+		FAVORITE_CHILD = false 
+		STEPCHILDREN = [:GoalAcceptOffer, :GoalRejectOffer]
+		AVAILABLE_TO = [:Party1]
+		DESCRIPTION = "Cancel offer"
 
 		def execute()
-			self.contract.destroy()
+			first_party = self.contract.model_instance(:Party1)
+			msg0 = "\n\nOffer retracted by #{first_party.user.first_name} "\
+				+ "#{first_party.user.last_name}."
+			Rails.logger.info(msg0)
+			msg1 = "Transaction cancelled."
+			Rails.logger.info(msg1)
+
+			cancel_transaction()
+
+			true
 		end
 
 		def reverse_execution()
+			true
 		end
 
 		def expire()
+			# This Goal should never time out.
+			false	
 		end
-
+		
 	end
 
-	class OfferCancel < Artifact
-		PARAMS = {\
-			origin: :Party1
-		}
+	class OfferWithdrawl < Artifact
+		PARAMS = {}
 	end
+
+
 end
 
