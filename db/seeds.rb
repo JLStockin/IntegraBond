@@ -9,46 +9,49 @@
 
 ###################################################################################
 #
-# Administrator and dummy in first slot 
+# Administrator and dummy in first slots 
 #
+require 'contact'
 
-fraud_narc = User.create(	first_name: "Fraud", last_name: "Narc", \
-							email: "bungabunga@example.com",
-							phone: "408-555-1000",
-							password: "foobar",
-							use_phone_as_primary: false)
-fraud_narc.save
-
-admin = User.create(	first_name: "M", last_name: "Administrator",
-						email: "cschille@gmail.com",
-						phone: "408-555-1001",	
-						password: "foobar",
-						use_phone_as_primary: false)
-admin.admin = 1
-admin.monetize("admin")
-admin.save
-
-# Two users
 user_data = [ \
+				{	first_name: "Fraud", last_name: "Narc",
+					password: "foobar",
+					email: "bungabunga@example.com",
+					sms: "408-555-1000"
+				},
+				{	first_name: "M", last_name: "Administrator",
+					password: "foobar",
+					email: "cschille@example.com",
+					sms: "408-555-1001"
+				},
 				{
 					first_name: "Chris", last_name: "Schille",
-					email: "user1@example.com",
-					phone: "408-555-1002",
 					password: "foobar",
-					use_phone_as_primary: true,
+					email: "user1@example.com",
+					sms: "408-555-1002"
 				}, 
 				{
 					first_name: "Sali", last_name: "Schille",
-					email: "user2@example.com",
-					phone: "408-555-1003",
 					password: "foobar",
-					use_phone_as_primary: false
+					email: "user2@example.com",
+					sms: "408-555-1003"
 				}
 			]
 
 user_data.each do |attrs|
-	user = User.create(attrs)
-	user.monetize()
+	user = User.new()
+	user.first_name = attrs[:first_name]
+	user.last_name = attrs[:last_name]
+	user.password = attrs[:password]
+	user.username = attrs[:email]
+	user.admin = 1 if user.last_name == "Administrator"
+	user.save!
+
+	email = EmailContact.create!(:contact_data => attrs[:email], user: user)
+	sms = SMSContact.new(user: user)
+	sms.sms = attrs[:sms]
+	sms.save!
+	user.monetize("default")
 	user.account.set_funds("$1000", 0)
-	user.save
+	user.account.save!
 end

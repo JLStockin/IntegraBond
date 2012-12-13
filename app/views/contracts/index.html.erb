@@ -1,0 +1,19 @@
+<h1>Available Contract Types</h1>
+
+<table>
+  <tr>
+    <th></th>
+    <th></th>
+    <th></th>
+  </tr>
+
+<% @contracts.each_with_index do |contract, idx| %>
+  <tr>
+	<td><%= contract.title %>, version <%= contract.version %></td>
+    <td><%= link_to 'Details...', @contract %></td>
+    <td><%= link_to 'Create Transaction', new_contract_tranzaction_path %></td>
+  </tr>
+<% end %>
+</table>
+
+<br />

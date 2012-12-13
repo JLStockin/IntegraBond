@@ -1,9 +1,17 @@
-<h1>All users</h1>
+<h2>Participants in your current and past transactions</h2>
 
-<%= will_paginate(@users) %>
+<!--%= will_paginate(@associates) % -->
 
-<ul class="users">
-	<%= render @users %>
-</ul>
+<table>
+	<% @associates.each do |associate| %>
+		<tr>
+			<td><%= associate.last_name %>, <%= associate.first_name %></td>
+		</tr>
+	<% end %>
+</table>
 
-<%= will_paginate(@users) %>
+<!-- ul class="users" -->
+	<!-- %= render @associates % -->
+<!-- /ul -->
+
+<!-- %= will_paginate(@associates) % -->

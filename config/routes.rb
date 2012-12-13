@@ -1,22 +1,52 @@
 IntegraBond::Application.routes.draw do
-  resources :transactions
-if false
-  get "transaction/index"
 
-  get "transaction/edit"
+	# TODO: add contracts#new.  This is called when source for a new Contract type has been
+	# copied to the server, and the new Contract should be loaded and registered in the
+	# running system
+	#
 
-  get "transaction/new"
+	# Tranzaction creation
+	# GET /contracts => contracts#index
+	# GET /contracts/5 => contracts#show
+	# GET /contracts/5/tranzactions/new => contracts#new 
+	# POST /contracts/5/tranzactions => contracts#create
+	resources :contracts, :only => [:index, :show] do
+		resource :tranzactions, :only => [:new]
+	end
 
-  get "transaction/show"
-end
+	resources :parties, only: [:edit, :update]
 
-  resources :goals
+	# Tranzaction monitoring, history
+	# GET /tranzactions => tranzactions#index
+	# GET /tranzactions/14 => tranzactions#show
+	# GET /tranzactions/14/edit => tranzactions#edit
+	# POST /tranzactions/14/ => tranzactions#update
+	# GET /tranzactions/14/artifacts => artifacts#index
+	# GET /tranzactions/14/artifacts/21 => artifacts#show
+	resources :tranzactions, :only => [:index, :show, :edit, :update] do
+		resources :artifacts, :only => [:index, :show]
+		resources :parties, :only => [] do
+			resources :invitations, :only => [:new, :create]
+		end
 
-  resources :xactions
+	end
 
-#	get "sessions/new"
+	# Tranzaction control
+	resources :goals, :only => [:index, :show] do
+		resources :artifacts, :only => [:new, :create]
+	end
 
-	resources :users
+	resources :expirations, :only => [] do
+		collection { post 'sweep', :action => 'expirations#sweep' }
+	end
+
+	# Users
+	resources :users, :except => [:destroy] do
+		resource :account, :only => [:show]
+		resources :contacts
+	end
+
+	# Sessions
 	resources :sessions, :only		=> [:new, :create, :destroy]
 
   	match '/signup', :to => 'users#new'
@@ -24,62 +54,6 @@ end
   	match '/signout', :to => 'sessions#destroy'
   	match '/about', :to => 'pages#about'
   	match '/help', :to => 'pages#help'
-	root :to => 'transactions#index'
 
-  # The priority is based upon order of creation:
-  # first created -> highest priority.
-
-  # Sample of regular route:
-  #   match 'products/:id' => 'catalog#view'
-  # Keep in mind you can assign values other than :controller and :action
-
-  # Sample of named route:
-  #   match 'products/:id/purchase' => 'catalog#purchase', :as => :purchase
-  # This route can be invoked with purchase_url(:id => product.id)
-
-  # Sample resource route (maps HTTP verbs to controller actions automatically):
-  #   resources :products
-
-  # Sample resource route with options:
-  #   resources :products do
-  #     member do
-  #       get 'short'
-  #       post 'toggle'
-  #     end
-  #
-  #     collection do
-  #       get 'sold'
-  #     end
-  #   end
-
-  # Sample resource route with sub-resources:
-  #   resources :products do
-  #     resources :comments, :sales
-  #     resource :seller
-  #   end
-
-  # Sample resource route with more complex sub-resources
-  #   resources :products do
-  #     resources :comments
-  #     resources :sales do
-  #       get 'recent', :on => :collection
-  #     end
-  #   end
-
-  # Sample resource route within a namespace:
-  #   namespace :admin do
-  #     # Directs /admin/products/* to Admin::ProductsController
-  #     # (app/controllers/admin/products_controller.rb)
-  #     resources :products
-  #   end
-
-  # You can have the root of your site routed with "root"
-  # just remember to delete public/index.html.
-  # root :to => 'welcome#index'
-
-  # See how all your routes lay out with "rake routes"
-
-  # This is a legacy wild controller route that's not recommended for RESTful applications.
-  # Note: This route will make all actions in every controller accessible via GET requests.
-  # match ':controller(/:action(/:id))(.:format)'
+	root :to => 'pages#home'
 end

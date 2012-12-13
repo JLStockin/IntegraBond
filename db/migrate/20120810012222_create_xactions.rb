@@ -9,5 +9,8 @@ class CreateXactions < ActiveRecord::Migration
 
       t.timestamps
     end
+
+	add_index :xactions, :primary_id
+	add_index :xactions, :beneficiary_id
   end
 end

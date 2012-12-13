@@ -1,3 +1,0 @@
-class PartyAdmin < Party
-
-end

@@ -3,12 +3,8 @@
 
 <%= form_for(:session, :url => sessions_path) do |f| %>
 	<div class="field">
-		<%= f.label :email %><br />
-		<%= f.text_field :email %>
-	</div>
-	<div class="field">
-		<strong>    -or- </strong> <%= f.label :phone %><br />
-		<%= f.text_field :phone %>
+		<%= f.label :username %><br />
+		<%= f.text_field :username %>
 	</div>
 	<div class="field">
 		<%= f.label :password %><br />

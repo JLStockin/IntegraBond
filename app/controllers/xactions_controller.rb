@@ -2,22 +2,28 @@ class XactionsController < ApplicationController
   # GET /xactions
   # GET /xactions.json
   def index
-    @xactions = Xaction.all
+	before_filter :authenticate
+	before_filter :correct_user
+
+	@account = current_user().account
+    @xactions = Xaction.find_by_primary(current_user().id)
 
     respond_to do |format|
       format.html # index.html.erb
-      format.json { render json: @xactions }
+      #format.json { render json: @xactions }
     end
   end
 
   # GET /xactions/1
   # GET /xactions/1.json
   def show
+	user = current_user()
+
     @xaction = Xaction.find(params[:id])
 
     respond_to do |format|
       format.html # show.html.erb
-      format.json { render json: @xaction }
+      #format.json { render json: @xaction }
     end
   end
 

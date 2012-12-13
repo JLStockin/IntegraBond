@@ -1,0 +1,16 @@
+<h1>History for this transaction</h1>
+
+<table>
+	<tr>
+		<th>Date</th>
+		<th>Event</th>
+	</tr>
+
+	<% @artifacts.each do |artifact| %>
+		<tr>
+			<td><%= artifact.created_at %></td>
+			<td><%= link_to description_for(artifact), artifact %></td>
+		</tr>
+	<% end %>
+</table>
+

@@ -8,7 +8,7 @@ end
 
 describe PartyTest do
 	it "should create a new instance given valid attributes" do
-		user = FactoryGirl.create(:buyer_user)
+		contact = FactoryGirl.create(:buyer_phone)
 		user.account.set_funds(1000, 50)
 		@party = PartyTest.new()
 		@party.user = user

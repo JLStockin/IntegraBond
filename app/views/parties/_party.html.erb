@@ -1,0 +1,52 @@
+<% party = f.object %>
+<% contact = party.contact %>
+
+<fieldset>
+	<h3>Identify <%= contact.nil? ? party.class.const_to_symbol(party.class) : party.dba %></h3>
+
+	<% # Find and Invite %>
+	<p>
+		<%= f.radio_button :contact_strategy, Contact::CONTACT_METHODS[0] %>
+		<%= f.label :contact_strategy, "Identify as: " %>
+		<%= fields_for(:contact) do |p2_contact| %>
+			<%= p2_contact.text_field :contact_data, value: contact.contact_data %> 
+			<%= p2_contact.select :contact_type_index, Contact.contact_types_index,
+				selected: contact.contact_type_index %>
+		<% end %>
+	</p>
+	<p>
+		<%= f.radio_button :contact_strategy, Contact::CONTACT_METHODS[1] %>
+		<%= f.label :contact_strategy, "Invite to #{SITE_NAME}" %>
+	</p>
+
+	<% # Past associate %>
+	<p>
+		<% if contact.user.nil? then %>
+			<% associates = associates_list(party.tranzaction) %>
+			<% unless associates.empty? then %>
+				<%= f.radio_button :contact_strategy, Contact::CONTACT_METHODS[2] %>
+				<%= f.label :contact_strategy, "Pick a past associate: " %>
+
+				<%= fields_for(:contact) do |p2_contact| %>
+					<%= p2_contact.select(:associate_id, associates, selected: associates[0]) %>
+				<% end %>
+			<% end %>
+		<% end %>
+	</p>
+
+	<% # Publish %>
+	<p>
+		<%= f.radio_button :contact_strategy, Contact::CONTACT_METHODS[3] %>
+		<%= f.label :contact_strategy, "Publish (to accept any user)" %>
+	</p>
+
+</fieldset>
+
+<div class="actions">
+	<p>
+	<fieldset>
+		<%= f.submit "Continue" %>
+		<%= f.submit "Back", :name => "previous_button" %>
+	</fieldset>
+	</p>
+</div>

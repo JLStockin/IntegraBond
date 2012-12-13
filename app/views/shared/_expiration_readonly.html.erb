@@ -1,0 +1,5 @@
+<% if exp.value.nil then %>
+	<%= exp.offset %> <%= exp.offset_units %> from <%= exp.basis_description %>
+<% else %>
+	<%= exp.value.to_s %>
+<% end %>

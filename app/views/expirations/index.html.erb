@@ -1,0 +1,21 @@
+<h1>Listing expirations</h1>
+
+<table>
+  <tr>
+    <th></th>
+    <th></th>
+    <th></th>
+  </tr>
+
+<% @expirations.each do |expiration| %>
+  <tr>
+    <td><%= link_to 'Show', expiration %></td>
+    <td><%= link_to 'Edit', edit_expiration_path(expiration) %></td>
+    <td><%= link_to 'Destroy', expiration, confirm: 'Are you sure?', method: :delete %></td>
+  </tr>
+<% end %>
+</table>
+
+<br />
+
+<%= link_to 'New Expiration', new_expiration_path %>

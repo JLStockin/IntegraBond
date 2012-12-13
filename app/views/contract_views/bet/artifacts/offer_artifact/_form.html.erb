@@ -1,0 +1,49 @@
+<% action_url = goal_artifacts_url @artifact.goal_id %>
+
+<%= form_for(@artifact, :url => action_url) do |f| %>
+	<% if @artifact.errors.any? %>
+		<div id="error_explanation">
+			<h2><%= pluralize(@artifact.errors.count, "error") %>
+				prohibited this contract from being saved:
+			</h2>
+			<ul>
+				<% @artifact.errors.full_messages.each do |msg| %>
+					<li><%= msg %></li>
+				<% end %>
+			</ul>
+		</div>
+	<% end %>
+	<div class="field">
+		<%= f.label(:bet_cents, 'Bet Amount (US Dollars): ') %>
+		<%= f.number_field(:bet_cents) %><br />
+	</div>
+
+	<em>Extend offer to</em><br />
+	<div class="field">Anyone <%= f.radio_button(:party2_contact_type, 'ContactPublished',
+		checked: true) %>
+	</div>
+	<div class="field">Someone specific: <%= f.text_field(:party2_contact_data) %>
+		<br />
+		<% contact_types.each_with_index do |c_type, idx| %>
+			<%= f.radio_button(:party2_contact_type, c_type.to_s,
+				checked: idx == 0 ? true : false) %>
+			<%= f.label(:party2_contact_type, c_type.to_s.downcase) %>
+			<br />
+		<% end %><br />
+		<%= f.check_box(:invite[:Party2]) %>
+		<%= f.label(:invite[:Party2], "Invite to #{SITE_NAME} (if not already a user)?") %>
+		<br />
+	</div>
+
+	<div class="field">Contact me via: <br />
+		<% current_user.contacts.each_with_index do |contact, idx| %>
+			<%= f.radio_button(:party1_contact_id, contact.id,
+				checked: idx == 0 ? true : false) %>
+			<%= f.label :party1_contact_id, stringify_contact(contact) %>
+		<% end %><br />
+	</div>
+	<div class="actions">
+		<%= f.submit "Offer to Bet" %>
+	</div>
+
+<% end %>

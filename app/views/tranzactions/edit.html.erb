@@ -1,0 +1,6 @@
+<h2>Create a Bet</h2>
+
+<%= form_for(@tranzaction, :url => { :action => "update" }) do |tf| %>
+	<%= render 'shared/error_messages', :object => tf.object %>
+	<%= render partial_for_step(@tranzaction), :t => tf %>
+<% end %>

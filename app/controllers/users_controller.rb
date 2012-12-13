@@ -1,15 +1,18 @@
 
 class UsersController < ApplicationController
-	before_filter :authenticate, :except => [:show, :new, :create]
-	before_filter :correct_user, :only => [:edit, :update]
+	before_filter :authenticate, :except => [:new, :create]
 	before_filter :admin_user, :only => :destroy
 
 	def index
-		@title = "All users"
-		@users = User.paginate(:page => params[:page], :per_page => 10) 
+		@title = "Your Associates"
+		@associates = current_user.admin? \
+			? Contract.all
+			: Contract.tranzaction_associates(current_user())
+		# @associates = @associates.paginate(:page => params[:page], :per_page => 10) 
 	end
 
 	def show
+		# TODO: make this the public view (add privacy protection) if user != current_user
 		@user = User.find(params[:id])
 		@title = "#{@user.first_name} #{@user.last_name}"
 	end
@@ -20,7 +23,7 @@ class UsersController < ApplicationController
 			return
 		else
 			@user = User.new
-			@title = "Sign up now."	
+			@title = "Sign up now."
 		end
 	end
 
@@ -45,7 +48,8 @@ class UsersController < ApplicationController
 	end
 
 	def edit
-		@title = "Edit user"
+		@user = current_user()
+		@title = "#{@user.first_name} #{@user.last_name}"
 	end
 
 	def update
@@ -53,7 +57,7 @@ class UsersController < ApplicationController
 			flash[:success] = "Profile updated."
 			redirect_to @user
 		else
-			@title = "Edit user"
+			@title = "#{@user.first_name} #{@user.last_name}"
 			render 'edit'
 		end
 	end
@@ -61,25 +65,13 @@ class UsersController < ApplicationController
 	def destroy
 		user = User.find(params[:id])
 		name = user.first_name; name += " "; name += user.last_name
-		user.destroy
-		flash[:success] = "User #{name} destroyed"
+		if (user.id != current_user().id) then
+			user.destroy
+			flash[:success] = "User #{name} destroyed"
+		else
+			flash[:error] = "You can't destroy yourself!"
+		end
 		redirect_to(users_path)
 	end
 
-	private
-
-		def correct_user
-			@user = User.find(params[:id])
-			redirect_to(root_path) unless current_user?(@user)
-		end
-
-		def admin_user
-			if current_user.nil?
-				redirect_to(signin_path)
-			elsif current_user.admin?
-				return true
-			else
-				redirect_to(root_path)
-			end
-		end
 end

@@ -1,7 +1,10 @@
 class PagesController < ApplicationController
 
   def home
-    @title = "Home" if signed_in?
+    @title = "Welcome"
+	if signed_in? then
+		redirect_to tranzactions_path 
+		return
 	end
   end
 

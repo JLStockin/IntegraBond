@@ -2,7 +2,7 @@ class CreateValuables < ActiveRecord::Migration
 	def change
 		create_table :valuables do |t|
 			t.string	:type
-			t.integer	:contract_id
+			t.integer	:tranzaction_id
 			t.string	:machine_state
 			t.integer	:value_cents
 

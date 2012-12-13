@@ -1,0 +1,70 @@
+
+	state_machine :machine_state, :initial => : do
+
+		event :resolve do #		--> party.resolve(new_contact); call Contact.lookup() first!
+			transition :s_unresolved => :s_resolved
+		end
+
+		event :invite do #		--> party.invite()
+			transition :s_unresolved => :s_invited
+		end
+
+		event :publish do #		--> party.publish()
+			transition :s_unresolved => :s_published
+		end
+
+		event :accept do #		--> invitation.party.accept(current_user, invitation, new_contact)
+			transition :s_invited => :s_resolved
+			transition :s_published => :s_resolved
+		end
+
+		before_transition :s_unresolved => :s_resolved do |party, transition|	
+			new_contact = transition.args[0]
+			raise "New contact is unresolved" unless new_contact.resolved?
+			party.update_contact(new_contact)
+			party.tranzaction.flash_party(
+				party,
+				ModelInstance::USER_FOUND_MESSAGE.gsub(/USER_NAME/, party.contact.user_name)
+			)
+			true
+		end
+
+		before_transition :s_unresolved => :s_invited do |party, transition|	
+			contact = party.contact
+			if INVITABLE_CONTACT_TYPES.include?(contact.class.to_sym) then
+				invitation = PrivateInvitation.create!(:party => party)
+				invitation.invite(contact)
+				party.tranzaction.flash_party(
+					party,
+					ModelInstance::USER_INVITED_MESSAGE.gsub(/USER_NAME/, party.contact.user_name)
+				)
+				true
+			else
+				raise "#{contact_type}: invalid type for invite_contact"
+			end
+		end
+
+		before_transition :s_unresolved => :s_published do |party, transition|	
+			invitation = PublicInvitation.create!(:party => party)
+			party.tranzaction.flash_party(
+				party,
+				ModelInstance::USER_INVITED_MESSAGE.gsub(/USER_NAME/, party.contact.user_name)
+			)
+			true
+		end
+
+		before_transition [:s_invited, :s_published] => :s_resolved do |party, transition|	
+			current_user = transition.args[0]
+			presented_invitation = transition.args[1]
+			new_contact = transition.args[2]
+			raise "New contact is unresolved" unless new_contact.resolved?
+
+			if party.invitation.can_accept?(current_user, new_contact) then
+				update_contact(new_contact)
+				true
+			else
+				false
+			end
+		end
+
+	end

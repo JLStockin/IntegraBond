@@ -1,0 +1,39 @@
+<p id="notice"><%= notice %></p>
+
+<table>
+	<tr>
+		<th>Total Funds</th>
+		<th>Available Funds</th>
+	</tr>
+	<tr>
+		<% unless @account.nil? then %>
+			<td><%= @account.total_funds %></td>
+			<td><%= @account.available_funds %></td>
+		<% else %>
+			<td>n/a</td>
+			<td>n/a</td>
+		<% end %>
+	</tr>
+</table>
+
+<% unless @xactions.nil? or @xactions.empty? then %>
+	<table>
+		<tr>
+			<th>When</th>
+			<th>What</th>
+			<th>Amount</th>
+		</tr>
+			<% @xactions.each do |xaction| %>
+				<tr>
+					<td><%= xaction.created_at %>
+					<td><%= op_for(xaction) %></td>
+					<td>
+						<% paren = !xaction.credit_for?(@account) %>
+						<%= paren ? '(' : '' %>
+							<%= xaction.amount %>
+						<%= paren ? ')' : '' %>
+					</td> 
+				</tr>
+			<% end %>
+	</table>
+<% end %>

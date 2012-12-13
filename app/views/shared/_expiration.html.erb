@@ -1,0 +1,11 @@
+<% exp = f.object %>
+<% if exp.value.nil? then %>
+	<% desc = exp.description %>
+	<%= f.label(:offset, desc) %><br/>
+	<%= f.number_field :offset, :size => 10  %>
+	<%= f.select(:offset_units_index, exp.class.time_units_list,
+		selected: exp.offset_units_index) %>
+	<%= f.label :offset, exp.basis_description %>
+<% else %>
+	<%= f.label :value, "#{exp.description()}" %> <%= f.date_time :value %>
+<% end %>

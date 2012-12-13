@@ -68,13 +68,14 @@ end
 
 class Xaction < ActiveRecord::Base
 
-	TRANSACTION_ACCOUNT_OPS = [ \
-		[ :reserve,		"FUNDS RESERVE",	1],
-		[ :release,		"FUNDS RELEASE",	1],
-		[ :deposit,		"DEPOSIT",			1],
-		[ :transfer,	"TRANSFER",			2],
-		[ :withdraw,	"WITHDRAW",			1] \
-	]
+	# Second field is number of Party(s) involved
+	TRANSACTION_ACCOUNT_OPS = {\
+		reserve:		["FUNDS RESERVE",	1],
+		release:		["FUNDS RELEASE",	1],
+		deposit:		["DEPOSIT",			1],
+		transfer:		["TRANSFER",		2],
+		withdraw:		["WITHDRAW",		1] \
+	}
 
 	attr_accessible :op
 	monetize :amount_cents
@@ -83,11 +84,23 @@ class Xaction < ActiveRecord::Base
 	belongs_to :primary, class_name: Account, foreign_key: :primary_id
 	belongs_to :beneficiary, class_name: Account, foreign_key: :beneficiary_id
 
-	validates :op, :inclusion => TRANSACTION_ACCOUNT_OPS.map {|record| record[0]}
+	validates :op, :inclusion => TRANSACTION_ACCOUNT_OPS.keys
 	validates :primary, :presence => true
 	validates :amount_cents, :numericality => { :greater_than => 0 } 
 	validates :hold_cents, :numericality => { :greater_than_or_equal => 0 } 
 
 	before_save	XactionCallback 
 
+	#
+	# Is this a credit (true) or debit (false) to the supplied Account?
+	#
+	def credit_for?(account)
+		if self.op.to_sym == :release or self.op.to_sym == :deposit then 
+			return true 
+		elsif self.op.to_sym == :withdraw or self.op.to_sym == :reserve then
+			return false 
+		elsif self.op.to_sym == :transfer then 
+			return (self.beneficiary_id == account.id)
+		end
+	end
 end

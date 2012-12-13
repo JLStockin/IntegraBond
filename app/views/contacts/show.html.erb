@@ -1,0 +1,20 @@
+<p id="notice"><%= notice %></p>
+
+<p>
+  <b>Type:</b>
+  <%= @contact.type %>
+</p>
+
+<p>
+  <b>Contact data:</b>
+  <%= @contact.contact_data %>
+</p>
+
+<p>
+  <b>Owner:</b>
+  <%= @contact.owner_id %>
+</p>
+
+
+<%= link_to 'Edit', edit_contact_path(@contact) %> |
+<%= link_to 'Back', contacts_path %>

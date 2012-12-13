@@ -1,5 +1,8 @@
 MZERO = Money.new(0)
 
+class InsufficientFundsError < RuntimeError
+end
+
 class AccountValidator < ActiveModel::Validator
 
 	def validate(record)
@@ -21,6 +24,7 @@ class Account < ActiveRecord::Base
 	attr_accessible		:name
 
 	belongs_to :user
+
 	validates_with		::AccountValidator
 
 	def sufficient_funds?(amnt)
@@ -37,14 +41,14 @@ class Account < ActiveRecord::Base
 
 	def reserve(amnt)
 		amnt = Money.parse(amnt) 
-		raise "can't reserve zero or negative amount." if amnt <= 0
-		raise "insufficient funds" if !sufficient_funds?(amnt) 
+		raise ArgumentError.new("can't reserve zero or negative amount.") if amnt <= 0
+		raise InsufficientFundsError.new("insufficient funds") if !sufficient_funds?(amnt)
 		self.hold_funds += amnt
 	end
 
 	def clear(amnt)
 		amnt = Money.parse(amnt) 	
-		raise "can't clear negative funds or more than is in account." \
+		raise ArgumentError.new("can't clear negative funds or more than is in account.") \
 			if amnt <= 0 or amnt > self.hold_funds
 		self.hold_funds -= amnt 
 	end
@@ -52,7 +56,7 @@ class Account < ActiveRecord::Base
 	def deposit(amnt, amnt_to_reserve)
 		amnt = Money.parse(amnt)
 		amnt_to_reserve = Money.parse(amnt_to_reserve)
-		raise "can't clear #{amnt_to_reserve} for #{amnt}" \
+		raise ArgumentError.new("can't clear #{amnt_to_reserve} for #{amnt}") \
 			if amnt <= 0 or amnt_to_reserve < 0 or amnt_to_reserve > amnt
 		self.funds += amnt
 		self.hold_funds += amnt_to_reserve if amnt_to_reserve >= MZERO
@@ -60,16 +64,17 @@ class Account < ActiveRecord::Base
 
 	def withdraw(amnt)
 		amnt = Money.parse(amnt)  
-		raise "can't withdraw zero or negative funds amount." if amnt <= 0
-		raise "#{amnt} will overdraft account (available funds = #{available_funds})." \
-			if !sufficient_funds?(amnt)
+		raise ArgumentError.new("can't withdraw zero or negative funds amount.") if amnt <= 0
+		raise InsufficientFundsError.new(\
+			"#{amnt} will overdraft account (available funds = #{available_funds})."\
+		) if !sufficient_funds?(amnt)
 		self.funds -= amnt 
 	end
 
 	def Account.transfer(amnt, from, to, clear_amnt=0)
 		amnt = Money.parse(amnt) 
 		clear_amnt = Money.parse(clear_amnt)
-		raise "can't withdraw zero or negative funds amount." \
+		raise ArgumentError.new("can't withdraw zero or negative funds amount.") \
 			if (amnt <= MZERO or clear_amnt < MZERO \
 				or !from.sufficient_funds?(amnt - clear_amnt))
 		from.clear(clear_amnt) if clear_amnt > MZERO 

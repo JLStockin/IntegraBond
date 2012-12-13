@@ -1,6 +1,7 @@
 require 'active_support'
 
 class Object
+	if false then
 	#
 	# Take the name of a constant, truncate its namespace path, and turn
 	# it into a symbol.
@@ -27,5 +28,6 @@ class Object
 		path.pop
 		path = (path.join('::') + '::' + klass)
 		path.constantize
+	end
 	end
 end

@@ -18,7 +18,7 @@
 <% @goals.each do |goal| %>
   <tr>
     <td><%= goal.type %></td>
-    <td><%= goal.transaction_id %></td>
+    <td><%= goal.tranzaction_id %></td>
     <td><%= goal.t_start %></td>
     <td><%= goal.t_end %></td>
     <td><%= goal.machine_state %></td>
@@ -33,5 +33,3 @@
 </table>
 
 <br />
-
-<%= link_to 'New Goal', new_goal_path %>

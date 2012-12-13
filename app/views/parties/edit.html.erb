@@ -1,0 +1,8 @@
+<h2>Create a Bet</h2>
+
+<%= form_for(@party, :url => { :action => "update" }) do |party_builder| %>
+	<%= render 'shared/error_messages', :object => party_builder.object %>
+	<%= render 'party', :f => party_builder,
+		:party => party_builder.object,
+		:contact => party_builder.object.contact %>
+<% end %>

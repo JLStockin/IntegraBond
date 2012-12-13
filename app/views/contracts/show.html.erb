@@ -1,0 +1,9 @@
+<p id="notice"><%= notice %></p>
+<p><%= @contract.title %><p>
+<br />
+<p>Created by <%= @contract.author %> Version <%= @contract.version %></p>
+<br />
+<%= @contract.summary %></p>
+
+<%= link_to 'Create transaction', "/contracts/#{@contract.id}/new" %> |
+<%= link_to 'Back', contracts_path %>

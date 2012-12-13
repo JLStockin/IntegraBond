@@ -1,6 +1,7 @@
-require 'state_machine'
+#require 'state_machine'
 
 class Valuable < ActiveRecord::Base
+	extend Provisionable
 
 	raise "you must derive a class from Valuable" if self.class == Valuable
 
@@ -13,15 +14,15 @@ class Valuable < ActiveRecord::Base
 	monetize		:value_cents
 
 	# Accessibility
-	attr_accessible :contract_id, :origin_id, :disposition_id, :value
+	attr_accessible :origin_id, :disposition_id, :value
 
 	# Associations
-	belongs_to	:contract, class_name: Contract::Base, foreign_key: :contract_id
+	belongs_to	:tranzaction, class_name: Contract, foreign_key: :tranzaction_id
 	belongs_to	:origin, class_name: Party, foreign_key: :origin_id
 	belongs_to	:disposition, class_name: Party, foreign_key: :disposition_id 
 
 	# Validations
-	validates	:contract_id, presence: true
+	validates	:tranzaction, presence: true
 
 	validates	:origin_id, presence: true
 	validates	:disposition_id, presence: true
@@ -56,6 +57,8 @@ class Valuable < ActiveRecord::Base
 			transition :s_initial => :s_reserved
 		end
 		before_transition :s_initial => :s_reserved do |valuable, transition|
+			return true if valuable.class.asset?()
+
 			xaction = Xaction.new(op: :reserve)
 			xaction.amount = valuable.value
 			xaction.hold = 0 
@@ -68,6 +71,8 @@ class Valuable < ActiveRecord::Base
 			transition :s_reserved => :s_initial
 		end
 		before_transition :s_reserved => :s_initial do |valuable, transition|
+			return true if valuable.class.asset?()
+
 			xaction = Xaction.new(op: :release)
 			xaction.amount = valuable.value
 			xaction.hold = 0 
@@ -80,6 +85,8 @@ class Valuable < ActiveRecord::Base
 			transition :s_reserved => :s_transferred
 		end
 		before_transition :s_reserved => :s_transferred do |valuable, transition|
+			return true if valuable.class.asset?()
+
 			# valuable.hold contains an amount to be released before the transfer
 			xaction = Xaction.new(op: :transfer)
 			xaction.amount = valuable.value
@@ -94,6 +101,8 @@ class Valuable < ActiveRecord::Base
 			transition :s_transferred => :s_reserved_4_dispute
 		end
 		before_transition :s_transferred => :s_reserved_4_dispute do |valuable, transition|
+			return true if valuable.class.asset?()
+
 			xaction = Xaction.new(op: :reserve)
 			xaction.amount = valuable.value * 2
 			xaction.hold = 0 
@@ -106,6 +115,8 @@ class Valuable < ActiveRecord::Base
 			transition :s_reserved_4_dispute => :s_transferred
 		end
 		before_transition :s_reserved_4_dispute => :s_transferred do |valuable, transition|
+			return true if valuable.class.asset?()
+
 			for_plaintiff = transition.args[0][:for_plaintif]
 			raise "event didn't specifiy for_plaintiff (true or false)" if for_plaintiff.nil?
 
@@ -126,22 +137,31 @@ class Valuable < ActiveRecord::Base
 		end
 	end
 
-	# These params must be specified
-	def self.params
-		self.class::PARAMS
+	def self.sufficient_funds?(*valuables)
+		amnt = MZERO  
+		user_id = valuables[0].origin_id
+		valuables.each do |valuable|
+			raise "valuables belong to different users" unless valuable.origin_id = user_id
+			amnt += valuable.value unless valuable.class.asset?()
+		end
+		valuables[0].origin.account.sufficient_funds?(amnt)
 	end
+
+	#
+	# Assets don't get reserved or debited
+	#
+	def self.asset?
+		self::ASSET
+	end
+
+	# PARAMS must be specified in subclass
 
 	#
 	# Callbacks and helper classes
 	#
 
 	# Validations
-	def self.validate_initial_state(contract)
-	end
-
-	def to_s
-		"#{self.class} contract=#{contract}, value=#{value}, origin=#{origin}, " \
-			+ "disposition=#{disposition}, machine_state=#{machine_state}" 
+	def self.validate_initial_state(tranzaction)
 	end
 
 end
