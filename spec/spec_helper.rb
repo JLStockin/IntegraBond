@@ -68,7 +68,7 @@ RSpec.configure do |config|
 		g
 	end
 
-	class IBContracts::Test::TestContract < Contract::Base
+	class IBContracts::Test::TestContract < Contract
 
 		VERSION = "0.1"
 		CONTRACT_NAME = "Test Contract"

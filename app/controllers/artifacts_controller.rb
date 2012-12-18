@@ -48,5 +48,4 @@ class ArtifactsController < ApplicationController
 		redirect_to goals_path, :notice => "Offer Created"
 	end
 
-	def register_for_artifacts
 end

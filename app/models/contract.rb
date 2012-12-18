@@ -350,9 +350,7 @@ class Contract < ActiveRecord::Base
 				party.contact = current_user.contacts[0]
 				party.contact_strategy = nil 
 			else
-				contact = EmailContact.new()
-				contact.contact_data = "JoeBlow@example.com"
-				contact.user = nil
+				contact = EmailContact.create!(contact_data: "JoeBlow@example.com")
 				party.contact = contact
 				party.contact_strategy = Contact::CONTACT_METHODS[0]
 			end

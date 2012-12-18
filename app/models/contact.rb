@@ -22,80 +22,71 @@ class Contact < ActiveRecord::Base
 
 	def self.inherited(subclass)
 		super
-		unless subclass == PublishedContact then
-			self.subclasses[subclass.to_s.to_sym] = self.subclasses_index
-			self.subclasses_index += 1
-		end
+		self.subclasses[subclass.to_s.to_sym] = self.subclasses_index
+		self.subclasses_index += 1
 	end
 
-	attr_accessible :contact_data, :user, :type
-	attr_accessor	:user_id, :type_index
+	attr_accessible :type, :user_id
+	attr_accessor	:type_index
 	belongs_to		:user
 	has_many		:parties
 	has_many		:tranzactions, :through => :parties
 
-	def self.contact_types()
-		self.subclasses
-	end
-
-	def self.lookup(type, str)
-		contact_class = self.namespaced_class(type.to_s.camelize.to_sym)
-		Contact.joins(:user).where(
-			:contact_data => str, 
-			:type => contact_class.to_s
-		)
-	end
+	before_validation :normalize
 
 	#
-	# Overridden for special cases
-	#
-	def format_contact_data()
-		self.contact_data
-	end
-
-	#
-	# If contact_data can be mapped to one or more Contacts, return them.
-	# Returns nil if no matching User(s) could be found. 
-	#
-	# UNTESTED!
-	# 
-	def self.get_contacts(contact_type, contact_data)
-		if contact_type == NullContact then
-			return Contact.joins{user}.where{user.username == contact_data}
-		else
-			# Existing User? (contact_type == :EmailContact, :SMSContact, etc.)
-			contacts = Contact.lookup(\
-				contact_type,
-				contact_data\
-			)
-			return contacts
-		end
-	end
-
-	#
-	# UNTESTED!
+	# Does this Contact point to a User? 
 	#
 	def resolved?
 		!self.user_id.nil?
 	end
 
+	def self.contact_types()
+		self.subclasses
+	end
+
+	def data()
+		self.contact_data.downcase()
+	end
+
+	def data=(data)
+		self.contact_data = data.downcase()
+	end
+
 	#
-	# Code that should live in a decorator
 	#
-	def self.contact_types_index()
-		tuples = []
-		self.subclasses.each_pair do |klass, index|
-			tuples << [klass.to_s.constantize::CONTACT_TYPE_NAME, index] 
+	# If contact_data can be mapped to one or more resolved Contacts, return them.
+	# Returns nil if no matching User(s) could be found.
+	#
+	def self.get_contacts(contact_type, data)
+		if contact_type.to_s == UsernameContact.to_s then
+			return contact_type.joins{user}.where{user.username == data}
+		else
+			# Existing User? (contact_type == :EmailContact, :SMSContact, etc.)
+			klass = contact_type.to_s.constantize
+			contacts = Contact.where{\
+				(type == contact_type.to_s) &\
+				(contact_data == klass.normalize(data)) &\
+				(user_id != nil)\
+			}
+			return contacts
 		end
-		tuples
 	end
 
-	def contact_type_index()
-		return Contact.subclasses[self.class.to_s.to_sym]
+	def self.create_contact(type, data)
+		klass = type.to_s.constantize
+		c = klass.new()
+		c.contact_data = klass.normalize(data)
+		c
 	end
 
-	def user_contact_data
-		dba()
+	# Private
+	def normalize()
+		self.data = self.contact_data
+	end
+
+	def self.normalize(data)
+		data.downcase
 	end
 
 end
@@ -116,17 +107,16 @@ class SMSValidator < ActiveModel::Validator
 	end
 end
 
-class PublishedContact < Contact
+#########################################################################################
+#
+# Subclasses
+#
 
-	CONTACT_TYPE_NAME = 'publish (all users)'
-
-	def format_contact_data()
-		"published offer"
-	end
-end
-
-class NullContact < Contact
+class UsernameContact < Contact
+	USERNAME_RANGE = (8..40)
 	CONTACT_TYPE_NAME = 'via username' 
+	validates :contact_data, 	:presence => true,
+								:length => { :in => USERNAME_RANGE }
 end
 
 class EmailContact < Contact
@@ -136,26 +126,23 @@ class EmailContact < Contact
 end
 
 class SMSContact < Contact
-	attr_accessor :sms
 
-	CONTACT_TYPE_NAME = 'SMS (text it)'
+	CONTACT_TYPE_NAME = 'via SMS (text)'
 
 	validates_with SMSValidator
 
-	before_validation :normalize_it
-	after_initialize :format_it
-
-	def format_contact_data()
-		format_it
-		self.sms
+# Exposed through base class 
+	def data()
+		ActionController::Base.helpers.number_to_phone(self.contact_data.to_i)
 	end
 		
-	def normalize_it()
-		self.contact_data = self.sms.delete("()-.")
+	def data=(data)
+		self.contact_data = self.class.normalize(data)
 	end
 
-	def format_it()
-		self.sms = ActionController::Base.helpers.number_to_phone(self.contact_data.to_i)
+# Private
+	def self.normalize(data)
+		data.delete("()-.")
 	end
 
 end

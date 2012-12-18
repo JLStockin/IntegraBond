@@ -4,6 +4,9 @@
 #
 class Contracts::Bet::ModelDescriptor
 
+	# This is also defined in app/helpers/application_helper.rb
+	SITE_NAME = "IntegraBond"
+
 	#
 	# Transaction status
 	#
@@ -105,16 +108,16 @@ class Contracts::Bet::ModelDescriptor
 	end
 
 	PARTY_DESCRIPTIONS = {
-		:Party1	=> ['First party', 'You'],
-		:Party2	=> ['Second party', 'You'],
+		:Party1	=> 'First Party',
+		:Party2	=> 'Second Party'
 	}
 
-	def self.party_class_description(party_klass, idx)
-		PARTY_DESCRIPTIONS[ActiveRecord::Base.const_to_symbol(party_klass)][idx]
-	end
-		
 	CONTACT_OTHER_PARTY = 'Contact other party as: '
 
+	def self.party_class_description(party_klass)
+		PARTY_DESCRIPTIONS[ActiveRecord::Base.const_to_symbol(party_klass)]
+	end
+		
 	def self.party_role(party)
 		PARTY_DESCRIPTIONS[party.class.to_sym]
 	end

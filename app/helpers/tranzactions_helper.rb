@@ -33,13 +33,4 @@ module TranzactionsHelper
 		model_descriptor(tranzaction).status_for(tranzaction)
 	end
 
-	def associates_list(tranzaction)
-		assocs = Contract.associates_for(current_user).collect do |assoc| 
-			unless	(assoc.id == current_user().id or assoc.id == 2) then
-				elem = [assoc.username, assoc.id]
-			end
-		end
-		assocs.compact!
-	end
-
 end

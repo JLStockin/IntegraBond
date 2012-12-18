@@ -8,7 +8,7 @@
 			<% @party_classes.each do |party_class| %>
 				<% unless party_class == AdminParty then %>
 					<th><%= model_descriptor(party_class)\
-							.party_class_description(party_class, 0) %>
+							.party_class_description(party_class) %>
 					</th>
 				<% end %>
 			<% end %>
