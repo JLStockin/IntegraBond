@@ -1,18 +1,34 @@
 require 'spec_helper'
 
-class Transaction < ActiveRecord::Base
-
+module Contracts
+	module Test
+		class TestContract < Contract
+		end
+	end
 end
 
-class ArtifactTest < Artifact
-	PARAMS = [:a, :b]
+class Contracts::Test::ArtifactTest < Artifact
+	A_CONSTANT = true
+	param_accessor :a, :b
 end
 
-describe ArtifactTest do
+class Contracts::Test::Friend < ActiveRecord::Base
+end
+
+describe ActiveRecord::Base do
+	it "should have a param_accessor class method" do
+		ActiveRecord::Base.should respond_to :param_accessor
+	end
+end
+
+describe Contracts::Test::ArtifactTest do
 	before(:each) do
 		@trans = Contracts::Test::TestContract.create!
-		@af = ArtifactTest.new(contract_id: @trans.id) 
-		@artifact = ArtifactTest.create!(contract_id: @trans.id) 
+		@af = ::Contracts::Test::ArtifactTest.new()
+		@af.tranzaction_id = @trans.id
+		@artifact = ::Contracts::Test::ArtifactTest.new()
+		@artifact.tranzaction_id = @trans.id
+		@artifact.save!
 	end
 
 	it "should create a new instance given valid attributes" do
@@ -25,7 +41,7 @@ describe ArtifactTest do
 		@artifact.should respond_to :a=
 		@artifact.should respond_to :b=
 	end
-		
+
 	it "should have working accessors" do
 		@artifact.a.should be_nil
 		@artifact.b.should be_nil
@@ -46,25 +62,60 @@ describe ArtifactTest do
 		@artifact.b.should be == 10 
 	end
 
-	it "should support mass assignment defined" do
-		@artifact.should respond_to :mass_assign_params
-		@artifact.should respond_to :mass_fetch_params
+	describe "mass assignment" do
+		it "should support assignment, retrieval" do
+			@artifact.should respond_to :mass_assign_params
+			@artifact.should respond_to :mass_fetch_params
+		end
+
+		it "should have working methods" do
+			@artifact.mass_fetch_params.should be == {}
+			@artifact.mass_assign_params( a: 5, b: 10 )
+			hash = @artifact.mass_fetch_params
+			hash[:a].should be ==  5
+			hash[:b].should be == 10 
+		end
+			
+		it "should have accessors that persist data" do
+			@artifact.mass_assign_params( a: 5, b: 10 )
+			@artifact.save!
+			@artifact.reload
+			hash = @artifact.mass_fetch_params
+			hash[:a].should be ==  5
+			hash[:b].should be == 10 
+		end
+
+		it "should not allow assignment of illegal params" do
+			@artifact.mass_assign_params( a: 5, b: 4, c: 12 )
+			@artifact.mass_fetch_params().keys.include?(:c).should_not be_true
+		end
 	end
 
-	it "should have working mass assignment accessors" do
-		@artifact.mass_fetch_params.should be == {}
-		@artifact.mass_assign_params( a: 5, b: 10 )
-		hash = @artifact.mass_fetch_params
-		hash[:a].should be ==  5
-		hash[:b].should be == 10 
+	describe "ActiveRecord monkey-patched utilities" do
+
+		describe "namespaced_class()" do
+			it "should work on an ActiveRecord::Base instance" do
+				@artifact.should respond_to :namespaced_class
+				klass = @artifact.namespaced_class(:Friend)
+				klass.should_not be_nil
+			end
+
+			it "should work on an ActiveRecord::Base-derived class" do
+				@artifact.class.should respond_to :namespaced_class
+				klass = @artifact.class.namespaced_class(:Friend)
+				klass.should_not be_nil
+			end
+		end
+
+		it "should have a working const_to_symbol() class method" do
+			@artifact.class.should respond_to :const_to_symbol
+			@artifact.class.const_to_symbol(Contracts::Test::Friend).should be == :Friend
+		end
+
+		it "should have a working valid_constant? class method" do
+			@artifact.class.should respond_to :valid_constant?
+			@artifact.class.valid_constant?(:A_CONSTANT).should be_true	
+		end
 	end
-			
-	it "should have mass assignment accessors that persist data" do
-		@artifact.mass_assign_params( a: 5, b: 10 )
-		@artifact.save!
-		@artifact.reload
-		hash = @artifact.mass_fetch_params
-		hash[:a].should be ==  5
-		hash[:b].should be == 10 
-	end
+
 end

@@ -103,7 +103,7 @@ ActiveRecord::Base.class_eval do
 	# Determine if a constant of this name is defined in 'self's namespace
 	#
 	def self.valid_constant?(name)
-		self.constants.include? name
+		self.constants.include? name.to_s.to_sym
 	end
 
 	#
