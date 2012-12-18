@@ -10,7 +10,7 @@ end
 
 describe ArtifactTest do
 	before(:each) do
-		@trans = IBContracts::Test::TestContract.create!
+		@trans = Contracts::Test::TestContract.create!
 		@af = ArtifactTest.new(contract_id: @trans.id) 
 		@artifact = ArtifactTest.create!(contract_id: @trans.id) 
 	end

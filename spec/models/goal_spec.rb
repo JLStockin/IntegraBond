@@ -1,7 +1,7 @@
 require 'spec_helper'
 require 'active_support/time'
 
-module IBContracts
+module Contracts
 module Test
 end
 end
@@ -9,7 +9,7 @@ end
 describe Goal do
 
 	before(:each) do
-		@goal = IBContracts::Test::TestGoal.new()
+		@goal = Contracts::Test::TestGoal.new()
 		@goal.contract_id = 1 
 		@goal.save!
 	end
@@ -55,7 +55,7 @@ end
 describe Goal do
 
 	before(:each) do
-		@trans = IBContracts::Test::TestContract.create!()
+		@trans = Contracts::Test::TestContract.create!()
 		@trans.start
 		Goal.provision( \
 			TestHelper.goal_id,

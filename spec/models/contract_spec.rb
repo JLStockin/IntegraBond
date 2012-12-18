@@ -1,7 +1,7 @@
 require 'spec_helper'
 
 # TODO: create macro that creates the contract namespace
-module IBContracts
+module Contracts
 module Test
 end
 module Bad
@@ -30,7 +30,7 @@ describe Contract do
 		end
 
 		it "error for valid_contract_type? with an invalid contract" do
-			expect {IBContracts::Test::BadContract.valid_contract?()}.should raise_error 
+			expect {Contracts::Test::BadContract.valid_contract?()}.should raise_error 
 		end
 	end
 
@@ -88,7 +88,7 @@ describe "Transaction (Contract instance)" do
 	describe "initial setup" do
 
 		it "should create a valid contract" do
-			@contract = IBContracts::Bet::ContractBet
+			@contract = Contracts::Bet::ContractBet
 			@trans	= @contract.create!()
 		end
 
@@ -96,7 +96,7 @@ describe "Transaction (Contract instance)" do
 
 	describe "start" do
 		before(:each) do
-			@contract = IBContracts::Bet::ContractBet
+			@contract = Contracts::Bet::ContractBet
 			@trans	= @contract.create!()
 			@trans.start()
 		end
@@ -192,7 +192,7 @@ describe "Transaction (Contract instance)" do
 
 	describe "internal states" do
 		before(:each) do
-			@contract = IBContracts::Bet::ContractBet
+			@contract = Contracts::Bet::ContractBet
 			@trans	= @contract.create!()
 			@trans.start()
 			@g = provision_first_goal

@@ -12,7 +12,7 @@ describe PartyTest do
 		user.account.set_funds(1000, 50)
 		@party = PartyTest.new()
 		@party.user = user
-		@trans = IBContracts::Test::TestContract.create!()
+		@trans = Contracts::Test::TestContract.create!()
 		@party.contract = @trans 
 		@party.save!
 	end
@@ -20,7 +20,7 @@ describe PartyTest do
 	before(:each) do
 		user = FactoryGirl.create(:buyer_user)
 		user.account.set_funds(1000, 50)
-		@trans = IBContracts::Test::TestContract.create!()
+		@trans = Contracts::Test::TestContract.create!()
 		@party = PartyTest.new()
 		@party.user = user
 		@party.contract = @trans 
