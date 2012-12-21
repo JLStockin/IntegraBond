@@ -507,6 +507,10 @@ class Contract < ActiveRecord::Base
 		self::ARTIFACT
 	end
 
+	def self.author_email
+		self::AUTHOR_EMAIL
+	end
+
 	########################################################################################
 	#
 	# Setup state_machine for collecting data from Party initiating Tranzaction

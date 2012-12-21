@@ -10,6 +10,11 @@ require 'money'
 # in spec/support/ and its subdirectories.
 Dir[Rails.root.join("spec/support/**/*.rb")].each {|f| require f}
 
+module Contracts
+module Test
+end
+end
+
 RSpec.configure do |config|
 
 # ActiveRecord::Base.logger = Logger.new(STDOUT)
@@ -68,7 +73,7 @@ RSpec.configure do |config|
 		g
 	end
 
-	class IBContracts::Test::TestContract < Contract
+	class Contracts::Test::TestContract < Contract
 
 		VERSION = "0.1"
 		CONTRACT_NAME = "Test Contract"
@@ -94,7 +99,7 @@ RSpec.configure do |config|
 		end
 	end
 
-	class IBContracts::Test::TestGoal < Goal
+	class Contracts::Test::TestGoal < Goal
 
 		EXPIRE = "DateTime.now.advance( seconds: 2 )"
 		CHRON_PERIOD_SECONDS = 10
@@ -141,7 +146,7 @@ RSpec.configure do |config|
 	
 	end
 
-	class IBContracts::Test::TestArtifact < Artifact 
+	class Contracts::Test::TestArtifact < Artifact 
 
 		param_accessor :a, :b, :value_cents, :expire
 		monetize :value_cents
@@ -152,15 +157,15 @@ RSpec.configure do |config|
 	
 	end
 
-	class IBContracts::Test::Valuable1 < Valuable
+	class Contracts::Test::Valuable1 < Valuable
 		attr_accessible :value
 	end
 
-	class IBContracts::Test::Valuable2 < Valuable; end
+	class Contracts::Test::Valuable2 < Valuable; end
 
-	class IBContracts::Test::Party1 < Party; end
+	class Contracts::Test::Party1 < Party; end
 
-	class IBContracts::Test::Party2 < Party; end
+	class Contracts::Test::Party2 < Party; end
 
 	class TestHelper
 		class << self

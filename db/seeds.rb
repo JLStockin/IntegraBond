@@ -47,10 +47,16 @@ user_data.each do |attrs|
 	user.admin = 1 if user.last_name == "Administrator"
 	user.save!
 
-	email = EmailContact.create!(:contact_data => attrs[:email], user: user)
-	sms = SMSContact.new(user: user)
-	sms.sms = attrs[:sms]
+	email = EmailContact.new()
+	email.data = attrs[:email]
+	email.user = user
+	email.save!
+
+	sms = SMSContact.new()
+	sms.data = attrs[:sms]
+	sms.user = user
 	sms.save!
+
 	user.monetize("default")
 	user.account.set_funds("$1000", 0)
 	user.account.save!

@@ -35,7 +35,7 @@ class PartiesController < ApplicationController
 			@party.contact_strategy == Contact::CONTACT_METHODS[1] then
 
 			# Find or Invite
-			result = @party.get_find_result(params)
+			result = @party.get_find_strategy(params)
 			matches = Contact.get_contacts(result[0], result[1])
 
 			if @party.contact.nil? or @party.contact.class.to_s != result[0] then

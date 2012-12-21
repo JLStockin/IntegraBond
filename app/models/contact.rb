@@ -26,7 +26,7 @@ class Contact < ActiveRecord::Base
 		self.subclasses_index += 1
 	end
 
-	attr_accessible :type, :user_id
+	attr_accessible :type, :user_id, :contact_data
 	attr_accessor	:type_index
 	belongs_to		:user
 	has_many		:parties

@@ -8,6 +8,7 @@ module Bad
 end
 end
 
+CONTRACT_LIST = [Contracts::Bet::ContractBet]
 
 # Class-level validations for Contracts (validations on superclass Contract)
 #
@@ -16,7 +17,7 @@ describe Contract do
 	describe " meta-class" do
 
 		before(:each) do
-			@contracts = ContractManager.contracts
+			@contracts = CONTRACT_LIST 
 			@contract = @contracts[0]
 		end
 
@@ -29,14 +30,16 @@ describe Contract do
 			@contract.valid_contract?.should be_true
 		end
 
-		it "error for valid_contract_type? with an invalid contract" do
+		it "should error for valid_contract_type? with an invalid contract" do
 			expect {Contracts::Test::BadContract.valid_contract?()}.should raise_error 
 		end
 	end
 
 	describe ": class methods" do
 
-		ContractManager.contracts.each do |contract|
+#		ContractManager.contracts.each do |contract|
+
+		CONTRACT_LIST.each do |contract|
 
 			before(:each) do
 				@contract = contract
@@ -68,12 +71,27 @@ describe Contract do
 			end
 
 			it "should have a first goal" do
-				@contract.should respond_to(:first_goal)
+				@contract.should respond_to(:children)
 			end
 
-			it "should set reasonable fees" do
-				@contract.should respond_to(:fees)
-				@contract.fees.should be == Contract::Base::FEES[:default]
+			it "should have valuables" do
+				@contract.should respond_to(:valuables)
+			end
+
+			it "should support an Artifact (on the Contract)" do
+				@contract.should respond_to(:artifact)
+			end
+
+			it "should have Expirations" do
+				@contract.should respond_to(:expirations)
+			end
+
+			it "should have an author email address" do
+				@contract.should respond_to(:author_email)
+			end
+
+			it "should have parties" do
+				@contract.should respond_to(:party_roster)
 			end
 
 		end	
@@ -108,7 +126,7 @@ describe "Transaction (Contract instance)" do
 		it "should have house method that returns the right party" do
 			@trans.valid_contract?.should be_true
 			party_admin = @trans.parties.first
-			party_admin.user.admin.should be_true
+			party_admin.contact.user.admin.should be_true
 			@trans.house.should be == party_admin 
 		end
 

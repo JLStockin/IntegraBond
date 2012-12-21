@@ -2,7 +2,7 @@
 # View code specific to this contract type.  Unfortunately, Helpers don't support namespaces,
 # so it has to live down with the contract model
 #
-class Contracts::Bet::ModelDescriptor
+class Contracts::Test::ModelDescriptor
 
 	# This is also defined in app/helpers/application_helper.rb
 	SITE_NAME = "IntegraBond"
@@ -109,8 +109,7 @@ class Contracts::Bet::ModelDescriptor
 
 	PARTY_DESCRIPTIONS = {
 		:Party1	=> 'First Party',
-		:Party2	=> 'Second Party',
-		:PartyTest => 'Test Party'
+		:Party2	=> 'Second Party'
 	}
 
 	CONTACT_OTHER_PARTY = 'Contact other party as: '

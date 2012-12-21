@@ -7,7 +7,6 @@ end
 class Invitation < ActiveRecord::Base
 	attr_accessor :type, :slug
 	belongs_to :party
-	belongs_to :contact
 
 	before_save InvitationCallbackHook	
 

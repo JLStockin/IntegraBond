@@ -23,15 +23,13 @@ class Party < ActiveRecord::Base
 
 	def update_contact(new_contact)
 		old_contact = self.contact
-		return if new_contact == old_contact
+		return nil if new_contact == old_contact
 
 		self.contact = new_contact
 		self.save!
 
 		# Destroy previous contact
 		if !old_contact.nil? and old_contact.user_id.nil? then
-Rails.logger.info("Destroying contact: old_contact = #{old_contact.inspect} (new contact = #{new_contact.inspect})")
-puts("Destroying contact: old_contact = #{old_contact.inspect} (new contact = #{new_contact.inspect})")
 			Contact.destroy(old_contact.id) # if !old_contact.nil? and old_contact.user_id.nil?
 		end
 
@@ -48,9 +46,9 @@ puts("Destroying contact: old_contact = #{old_contact.inspect} (new contact = #{
 	#
 	# Code that belongs on a decorator
 	#
-	def description(index=0)
+	def description()
 		descriptor_class = self.namespaced_class(:ModelDescriptor)
-		descriptor_class::PARTY_DESCRIPTIONS[ActiveRecord::Base.const_to_symbol(self.class)][index]
+		descriptor_class::PARTY_DESCRIPTIONS[ActiveRecord::Base.const_to_symbol(self.class)]
 	end
 
 	#
@@ -60,7 +58,7 @@ puts("Destroying contact: old_contact = #{old_contact.inspect} (new contact = #{
 		if self.contact.nil? then
 			return "#{self.class.const_to_symbol(self.class)} (unresolved party)"
 		elsif !self.invitation.nil?
-			return "#{self.contact.data} has been invited to IntegraBond" 
+			return "#{self.contact.data} has been invited to #{SITE_NAME}" 
 		elsif !self.contact.user.nil? then
 			return "#{self.contact.user.first_name} #{self.contact.user.last_name}"\
 				+ " as #{self.contact.user.username}"
@@ -82,20 +80,21 @@ puts("Destroying contact: old_contact = #{old_contact.inspect} (new contact = #{
 	def find_type_index()
 		if self.contact_strategy == Contact::CONTACT_METHODS[0] then
 			return self.contact.nil?\
-				? 0\
-				: Contact.subclasses.assoc(self.contact.class.to_s.to_sym)[1]
+				? 1\
+				: Contact.subclasses[self.contact.class.to_s.to_sym]
 		else
-			return 0 
+			return 1 
 		end
 	end
 
 	# Map the element selected in the find box back to a [Contact subclass, data]
 	# tuple.
 	#
-	def get_find_result(params)
+	def get_find_strategy(params)
 		if self.contact_strategy == Contact::CONTACT_METHODS[0] then
-			idx = params[self.ugly_prefix()][:find_type_index].to_i
-			data = params[:contact][:data]
+			contact_type = params[self.ugly_prefix()][:find_type_index]
+			idx = Contact.subclasses[contact_type.to_sym].to_i
+			data = params[:contact][:contact_data]
 			return idx.nil?\
 				? [Contact.contact_types[Contact.contact_types.keys.first], data]
 				: [Contact.contact_types.key(idx), data] 

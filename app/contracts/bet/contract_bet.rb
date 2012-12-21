@@ -10,7 +10,7 @@ module Contracts::Bet
 		# Stuff specific to this contract 
 		CONTRACT_NAME = "2 Party Bet"
 		VERSION = "0.1"
-		TAGS = ["bet", "wager"]
+		TAGS = [:default, :bet, :wager]
 		CHILDREN = [:GoalTenderOffer]
 		ARTIFACT = :TermsArtifact
 		EXPIRATIONS = [ \
