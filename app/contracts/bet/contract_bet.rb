@@ -30,6 +30,7 @@ module Contracts::Bet
 		# Helpers
 		assoc_accessor(:Party1)
 		assoc_accessor(:Party2)
+		assoc_accessor(:AdminParty)
 		assoc_accessor(:TermsArtifact)
 		assoc_accessor(:OfferExpiration)
 		assoc_accessor(:BetExpiration)
@@ -44,16 +45,6 @@ module Contracts::Bet
 		#
 
 		WIZARD_STEPS = [:terms, { :party2 => :party_locater }, :confirm, :tendered]
-
-		# Array of Hashes
-		PAGE_OBJECTS = \
-		{
-			:terms				=> [:Party1Bet, :TermsArtifact,\
-									:OfferExpiration, :BetExpiration],
-			:party2				=> [:Party2],
-			:confirm			=> nil,
-			:tendered			=> nil
-		}
 
 		# Note that there isn't a transition between :party2 and :confirm  --
 		# This is handled by the parties_controller
@@ -86,17 +77,34 @@ module Contracts::Bet
 		inject_page_wizard()
 
 		def title()
-			if !party1_bet.nil? and !party1_bet.value.nil? and !party1.nil? and !party1.contact.nil?
-				party1_bet().value + " bet with " + party1().contact 
+			if !party1_bet.nil? and !party1_bet.value.nil? and !party1.nil? \
+				and !party1.contact.nil? then
+				party1_bet().value.to_s + " bet with " + party1().dba()
 			else
 				"Bet with a yet-to-be-determined party"
 			end
 		end
 	
 		def update_attributes(params)	
+
 			if params.has_key?(:contracts_bet_party1_bet) then
-				party1_bet.update_attributes(params[:contracts_bet_party1_bet])
+				party1_bet.value = Money.parse(params[:contracts_bet_party1_bet][:value])
 				party1_bet.save!
+			end
+
+			if params.has_key?(:contracts_bet_party2_bet) then
+				party2_bet.value = Money.parse(params[:contracts_bet_party2_bet][:value])
+				party2_bet.save!
+			end
+
+			if params.has_key?(:contracts_bet_party1_fees) then
+				party1_fees.value = Money.parse(params[:contracts_bet_party1_fees][:value])
+				party1_fees.save!
+			end
+
+			if params.has_key?(:contracts_bet_party2_fees) then
+				party2_fees.value = Money.parse(params[:contracts_bet_party2_fees][:value])
+				party2_fees.save!
 			end
 
 			if params.has_key?(:contracts_bet_terms_artifact) then
@@ -105,6 +113,7 @@ module Contracts::Bet
 			end
 
 			if params.has_key?(:contracts_bet_offer_expiration) then
+				offer_expiration.offset = (params[:contracts_bet_offer_expiration][:offset])
 				offer_expiration.update_attributes(params[:contracts_bet_offer_expiration])
 				offer_expiration.save!
 			end
@@ -114,40 +123,8 @@ module Contracts::Bet
 				bet_expiration.save!
 			end
 
-			if params.has_key?(:party2) then
-				if (params[:contact_strategy] == ModelDescriptor::CONTACT_METHODS[0]) then
-					klass = Contact.subclasses.key(\
-						params[:contact][:contact_type_index].to_i\
-					).to_s.constantize
-					party2.contact = klass.create!(:contact_data => params[:contact][:contact_data])
-					party2.save!
-					new_contacts = Contact.get_contact(
-						party2.contact.class,
-						party2.contact.contact_data
-					)
-					if new_contacts.nil? then
-						self.user_not_found(party.contact)
-					elsif new_contacts.count > 1 then
-						self.disambiguate(party.contact)
-					else
-						self.next_step
-					end
-				end
-			end
-			if params.has_key?(:contact) then
-				if (params[:contact_strategy] == 1) then
-					klass = Contact.subclasses.key(\
-						params[:contact][:contact_type_index].to_i\
-					).to_s.constantize
-					party2.contact = klass.create!(:contact_data => params[:contact][:contact_data])
-					party2.save!
-				end
-			end
 		end
 
-		def configuring_party?
-			self.class::PARTY_ROSTER.include? self.wizard_step.camelize.to_sym
-		end
 	end
 
 	ContractBet.register_dependencies()

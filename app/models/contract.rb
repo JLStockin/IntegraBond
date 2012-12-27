@@ -48,15 +48,16 @@ class Contract < ActiveRecord::Base
 	has_many	:valuables, foreign_key: :tranzaction_id, dependent: :destroy, autosave: true
 	has_many	:artifacts, foreign_key: :tranzaction_id, dependent: :destroy, autosave: true
 
-	has_many	:self_expirations, as: :owner, class_name: Expiration, dependent: :destroy
-	has_many	:goal_expirations, through: :goals, source: :expiration , as: :owner
-
 	accepts_nested_attributes_for :parties
 	accepts_nested_attributes_for :valuables
 
 	# Associations created by the Model itself
-	has_many	:goals, foreign_key: :tranzaction_id, dependent: :destroy
+	has_many	:goals, class_name: Goal, foreign_key: :tranzaction_id,
+					dependent: :destroy, autosave: true
 	has_one		:originator, class_name: Party, foreign_key: :originator_id
+
+	has_many	:self_expirations, as: :owner, class_name: Expiration, dependent: :destroy
+	has_many	:goal_expirations, through: :goals, source: :expiration , as: :owner
 
 	attr_accessible :originator
 
@@ -73,7 +74,7 @@ class Contract < ActiveRecord::Base
 		self.class.children().each do |goal_klass_sym|
 			goal = model_instance(goal_klass_sym)
 			goal = self.namespaced_class(goal_klass_sym).new() if goal.nil?
-			goal.tranzaction_id = self.id
+			self.goals << goal
 			goal.save!
 			goal.start(false, true)	# Don't provision, do expire  
 		end
@@ -212,7 +213,7 @@ class Contract < ActiveRecord::Base
 	# the subclass gains control.
 	#
 	def house()
-		admin = self.parties.first
+		admin = self.parties.where{type == AdminParty.to_s}.first
 		raise "administrator party not found" if admin.nil?
 		admin
 	end
@@ -308,7 +309,7 @@ class Contract < ActiveRecord::Base
 
 	#
 	# UNTESTED!
-	# :creator can be a Goal instance or an Expiration 
+	# :type_provider can be a Goal instance or an Expiration 
 	# 
 	def create_artifact_for(type_provider, params = nil)
 		goal = nil
@@ -343,7 +344,6 @@ class Contract < ActiveRecord::Base
 	def create_parties(current_user)
 		self.class.party_roster.each_with_index do |party_sym, idx|
 			party = self.namespaced_class(party_sym).new()
-			party.tranzaction = self
 
 			# TODO: use a default contact instead of contacts[0]
 			if (idx == 0) then
@@ -516,7 +516,7 @@ class Contract < ActiveRecord::Base
 	# Setup state_machine for collecting data from Party initiating Tranzaction
 	#
 	# Contract must define the following constants for the state machine:
-	# WIZARD_STEPS, PAGE_OBJECTS, FORWARD_TRANSITIONS, # REVERSE_TRANSITIONS, DEPENDENCIES
+	# WIZARD_STEPS, FORWARD_TRANSITIONS, # REVERSE_TRANSITIONS, DEPENDENCIES
 
 	def self.first_step()
 		return self::WIZARD_STEPS.first 
@@ -546,15 +546,8 @@ class Contract < ActiveRecord::Base
 		end
 	end
 
-	# Called when we are leaving a wizard page.  Save the objects.
-	#
-	def save_page_objects()
-		status = true
-		class_names = self.class::PAGE_OBJECTS[self.wizard_step.to_sym]
-		class_names.each do |class_name|
-			status = status and self.classname_to_getter(class_name).save()
-		end unless class_names.nil?
-		status
+	def configuring_party?
+		self.class::PARTY_ROSTER.include? self.wizard_step.camelize.to_sym
 	end
 
 	########################################################################################
@@ -608,7 +601,7 @@ class Contract < ActiveRecord::Base
 
 	CONTRACT_CONSTANT_NAMES = [ \
 		'VERSION', 'VALUABLES', 'AUTHOR_EMAIL', 'TAGS', 'EXPIRATIONS',
-		'CHILDREN', 'ARTIFACT', 'PARTY_ROSTER', 'WIZARD_STEPS', 'PAGE_OBJECTS',
+		'CHILDREN', 'ARTIFACT', 'PARTY_ROSTER', 'WIZARD_STEPS', 
 		'CONTRACT_NAME', 'FORWARD_TRANSITIONS', 'REVERSE_TRANSITIONS', 'DEPENDENCIES'\
 	]
 

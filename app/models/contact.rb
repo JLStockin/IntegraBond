@@ -50,7 +50,7 @@ class Contact < ActiveRecord::Base
 	end
 
 	def data=(data)
-		self.contact_data = data.downcase()
+		self.contact_data = self.class.normalize(data)
 	end
 
 	#
@@ -82,7 +82,7 @@ class Contact < ActiveRecord::Base
 
 	# Private
 	def normalize()
-		self.data = self.contact_data
+		self.data = self.contact_data # data= calls class normalize()
 	end
 
 	def self.normalize(data)

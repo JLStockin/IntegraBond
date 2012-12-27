@@ -79,27 +79,33 @@ FactoryGirl.define do
 	# Contact 
 	#
 	factory :seller_email_contact, class: EmailContact do |contact|
-		contact.contact_data	"seller@example.com"
+		association :user,			factory: :seller_user
+		contact.contact_data		"seller@example.com"
 	end
 
 	factory :buyer_email_contact, class: EmailContact do |contact|
-		contact.contact_data	"buyer@example.com"
+		association :user,			factory: :buyer_user
+		contact.contact_data		"buyer@example.com"
 	end
 
 	factory :seller_username_contact, class: UsernameContact do |contact|
-		contact.contact_data	"seller@example.com"
+		association :user,			factory: :seller_user
+		contact.contact_data		"seller@example.com"
 	end
 
 	factory :buyer_username_contact, class: UsernameContact do |contact|
-		contact.contact_data	"buyer@example.com"
+		association :user,			factory: :buyer_user
+		contact.contact_data		"buyer@example.com"
 	end
 
 	factory :seller_sms_contact, class: SMSContact do |contact|
-		contact.contact_data	"4085551001"
+		association :user,			factory: :buyer_user
+		contact.contact_data		"4085551001"
 	end
 
 	factory :buyer_sms_contact, class: SMSContact do |contact|
-		contact.contact_data	"4085551002"
+		contact.contact_data		"4085551002"
+		association :user,			factory: :buyer_user
 	end
 
 end

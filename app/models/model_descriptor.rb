@@ -10,4 +10,12 @@ class ModelDescriptor
 		'Past associate ',
 	    'Allow anyone to accept (and generate an invitation link)'
 	]
+
+	TIME_UNITS = {
+		:minutes					=> 1,
+		:hours						=> 2,
+		:days						=> 3,
+		:months						=> 4
+	}
+
 end

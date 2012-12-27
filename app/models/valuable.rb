@@ -14,7 +14,7 @@ class Valuable < ActiveRecord::Base
 	monetize		:value_cents
 
 	# Accessibility
-	attr_accessible :origin_id, :disposition_id, :value
+	#attr_accessible :origin_id, :disposition_id, :value
 
 	# Associations
 	belongs_to	:tranzaction, class_name: Contract, foreign_key: :tranzaction_id
@@ -57,13 +57,15 @@ class Valuable < ActiveRecord::Base
 			transition :s_initial => :s_reserved
 		end
 		before_transition :s_initial => :s_reserved do |valuable, transition|
-			return true if valuable.class.asset?()
-
-			xaction = Xaction.new(op: :reserve)
-			xaction.amount = valuable.value
-			xaction.hold = 0 
-			xaction.primary = valuable.origin.user.account
-			xaction.save
+			if valuable.class.asset?() then
+				true
+			else
+				xaction = Xaction.new(op: :reserve)
+				xaction.amount = valuable.value
+				xaction.hold = 0 
+				xaction.primary = valuable.origin.contact.user.account
+				xaction.save
+			end
 		end
 
 		# :release
@@ -71,13 +73,15 @@ class Valuable < ActiveRecord::Base
 			transition :s_reserved => :s_initial
 		end
 		before_transition :s_reserved => :s_initial do |valuable, transition|
-			return true if valuable.class.asset?()
-
-			xaction = Xaction.new(op: :release)
-			xaction.amount = valuable.value
-			xaction.hold = 0 
-			xaction.primary = valuable.origin.user.account
-			xaction.save
+			if valuable.class.asset?() then
+				true
+			else
+				xaction = Xaction.new(op: :release)
+				xaction.amount = valuable.value
+				xaction.hold = 0 
+				xaction.primary = valuable.origin.contact.user.account
+				xaction.save
+			end
 		end
 
 		# :transfer
@@ -85,15 +89,17 @@ class Valuable < ActiveRecord::Base
 			transition :s_reserved => :s_transferred
 		end
 		before_transition :s_reserved => :s_transferred do |valuable, transition|
-			return true if valuable.class.asset?()
-
-			# valuable.hold contains an amount to be released before the transfer
-			xaction = Xaction.new(op: :transfer)
-			xaction.amount = valuable.value
-			xaction.hold = valuable.value
-			xaction.primary = valuable.origin.user.account
-			xaction.beneficiary = valuable.disposition.user.account
-			xaction.save
+			if valuable.class.asset?() then
+				true
+			else
+				# valuable.hold contains an amount to be released before the transfer
+				xaction = Xaction.new(op: :transfer)
+				xaction.amount = valuable.value
+				xaction.hold = valuable.value
+				xaction.primary = valuable.origin.contact.user.account
+				xaction.beneficiary = valuable.disposition.contact.user.account
+				xaction.save
+			end
 		end
 
 		# :dispute
@@ -101,13 +107,15 @@ class Valuable < ActiveRecord::Base
 			transition :s_transferred => :s_reserved_4_dispute
 		end
 		before_transition :s_transferred => :s_reserved_4_dispute do |valuable, transition|
-			return true if valuable.class.asset?()
-
-			xaction = Xaction.new(op: :reserve)
-			xaction.amount = valuable.value * 2
-			xaction.hold = 0 
-			xaction.primary = valuable.disposition.user.account
-			xaction.save
+			if valuable.class.asset?() then
+				true
+			else
+				xaction = Xaction.new(op: :reserve)
+				xaction.amount = valuable.value * 2
+				xaction.hold = 0 
+				xaction.primary = valuable.disposition.contact.user.account
+				xaction.save
+			end
 		end
 
 		# :adjudicate
@@ -115,36 +123,41 @@ class Valuable < ActiveRecord::Base
 			transition :s_reserved_4_dispute => :s_transferred
 		end
 		before_transition :s_reserved_4_dispute => :s_transferred do |valuable, transition|
-			return true if valuable.class.asset?()
-
-			for_plaintiff = transition.args[0][:for_plaintif]
-			raise "event didn't specifiy for_plaintiff (true or false)" if for_plaintiff.nil?
-
-			xaction = nil
-			if for_plaintiff
-				xaction = Xaction.new(op: :transfer)
-				xaction.amount = valuable.value * 2
-				xaction.hold = valuable.value * 2
-				xaction.primary = valuable.disposition.user.account # now 2nd party's accnt
-				xaction.beneficiary = valuable.origin.user.account # now 1st party's accnt
+			if valuable.class.asset?() then
+				true
 			else
-				xaction = Xaction.new(op: :release)
-				xaction.amount = valuable.value * 2
-				xaction.hold = 0 
-				xaction.primary = valuable.disposition.user.account # now 2nd party's accnt
+				for_plaintiff = transition.args[0][:for_plaintif]
+				raise "event didn't specifiy for_plaintiff (true or false)" if for_plaintiff.nil?
+
+				xaction = nil
+				if for_plaintiff
+					xaction = Xaction.new(op: :transfer)
+					xaction.amount = valuable.value * 2
+					xaction.hold = valuable.value * 2
+					# now 2nd party's accnt
+					xaction.primary = valuable.disposition.contact.user.account
+					# now 1st party's accnt
+					xaction.beneficiary = valuable.origin.contact.user.account
+				else
+					xaction = Xaction.new(op: :release)
+					xaction.amount = valuable.value * 2
+					xaction.hold = 0
+					# now 2nd party's accnt
+					xaction.primary = valuable.disposition.contact.user.account
+				end
+				xaction.save
 			end
-			xaction.save
 		end
 	end
 
 	def self.sufficient_funds?(*valuables)
 		amnt = MZERO  
-		user_id = valuables[0].origin_id
+		party_id = valuables[0].origin_id
 		valuables.each do |valuable|
-			raise "valuables belong to different users" unless valuable.origin_id = user_id
+			raise "valuables belong to different users" unless valuable.origin_id = party_id
 			amnt += valuable.value unless valuable.class.asset?()
 		end
-		valuables[0].origin.account.sufficient_funds?(amnt)
+		valuables[0].origin.contact.user.account.sufficient_funds?(amnt)
 	end
 
 	#

@@ -10,12 +10,12 @@ FactoryGirl.define do
 	# Party 
 	#
 	factory :party1, class: Party do |party|
-		association	:user,			factory: :buyer_user
-		association :contract,		factory: :test_contract		
+		association	:contact,		factory: :buyer_email_contact
+		association :tranzaction,	factory: :contracts_test_test_contract
 	end
 
 	factory :party2, class: Party do |party|
-		association	:user,			factory: :seller_user
-		association :contract,		factory: :test_contract		
+		association	:contact,		factory: :seller_email_contact
+		association :tranzaction,	factory: :contracts_test_test_contract
 	end
 end

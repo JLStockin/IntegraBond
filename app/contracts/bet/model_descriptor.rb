@@ -2,7 +2,7 @@
 # View code specific to this contract type.  Unfortunately, Helpers don't support namespaces,
 # so it has to live down with the contract model
 #
-class Contracts::Bet::ModelDescriptor
+class Contracts::Bet::ModelDescriptor < ModelDescriptor
 
 	# This is also defined in app/helpers/application_helper.rb
 	SITE_NAME = "IntegraBond"
@@ -86,13 +86,6 @@ class Contracts::Bet::ModelDescriptor
 	EXPIRATION_LABELS = {
 		:OfferExpiration			=> "Other party must accept by: ",
 		:BetExpiration				=> "Outcome to be confirmed no later than: "
-	}
-
-	TIME_UNITS = {
-		:minutes					=> 1,
-		:hours						=> 2,
-		:days						=> 3,
-		:months						=> 4
 	}
 
 	def self.goal(goal)

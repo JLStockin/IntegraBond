@@ -17,7 +17,7 @@ describe Contracts::Test::Party1 do
 			contact_id: @contact.id
 		}
 		@params = {
-			@party.ugly_prefix().to_sym() => {:find_type_index => "EmailContact"},
+			@party.ugly_prefix().to_sym() => {:find_type_index => "2"},
 			:contact => { :contact_data => "joeblow@example.com" }
 		}
 	end
@@ -65,12 +65,6 @@ describe Contracts::Test::Party1 do
 		end
 	end
 		
-	it "should have a list of contact strategies" do
-		@party.class.contact_strategies_list.each do |strategy|
-			ModelDescriptor::CONTACT_METHODS.include?(strategy).should be_true
-		end
-	end
-
 	it "should have a description" do
 		@party.description.should be == "First Party"
 	end

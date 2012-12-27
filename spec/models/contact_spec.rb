@@ -4,7 +4,6 @@ CONTACT_TYPES_TO_TEST = [EmailContact, SMSContact, UsernameContact]
 
 describe Contact do
 	
-
 	before(:each) do
 		@user ||= FactoryGirl.create(:seller_user)
 		@username = FactoryGirl.build(:seller_username_contact)
@@ -104,6 +103,24 @@ describe Contact do
 			)
 		end
 
+	end
+
+	describe "normalize" do
+		before(:each) do
+			@c = EmailContact.new
+			@c.user = User.find(3)
+			@data = "User2@Example.com"
+			@c.contact_data = @data
+		end
+
+		it "should have a working instance method" do
+			@c.normalize
+			@c.contact_data.should be == @data.downcase 
+		end
+
+		it "should have a working class method" do
+			@c.class.normalize(@data).should be == @data.downcase 
+		end
 	end
 
 	describe "data writer" do

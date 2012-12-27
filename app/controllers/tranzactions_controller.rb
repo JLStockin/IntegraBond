@@ -6,7 +6,6 @@ class TranzactionsController < ApplicationController
 	before_filter :authenticate
 	before_filter :admin_user, :only => :destroy
 
-	attr_accessor :contact_method
 	CONTACT_METHODS = [
 		'Find ',
 		'Past associate ', 
@@ -64,6 +63,8 @@ class TranzactionsController < ApplicationController
 			redirect_to tranzactions_path and return
 		elsif @tranzaction.can_next_step?() then
 			@tranzaction.next_step()
+		else
+			raise "no progress possible"
 		end
 
 		if @tranzaction.final_step?() then

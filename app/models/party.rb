@@ -36,11 +36,56 @@ class Party < ActiveRecord::Base
 		new_contact
 	end
 
-	#
-	# Record last method used to lookup another party
-	#
-	def self.contact_strategies_list()
-		ModelDescriptor::CONTACT_METHODS
+	def create_and_update_contact(params)
+		contact_type = Contact.subclasses.key(
+			params[self.ugly_prefix][:find_type_index].to_i
+		)
+		contact_data = params[:contact][:contact_data]
+		contact = Contact.create_contact(
+			contact_type,
+			contact_data	
+		)
+		self.update_contact(contact)
+	end
+
+	def update_attributes(params)
+				
+		if params.has_key?(self.ugly_prefix) then
+			self.contact_strategy = params[self.ugly_prefix][:contact_strategy]
+
+			if (self.contact_strategy == Contact::CONTACT_METHODS[0]) then
+
+				# find
+				self.create_and_update_contact(params)
+
+			elsif (self.contact_strategy  == Contact::CONTACT_METHODS[1])
+				
+				# invite
+				self.create_and_update_contact(params)
+
+				# TODO: create Invitation
+
+			elsif (self.contact_strategy == Contact::CONTACT_METHODS[2])
+
+				# associate
+				user_id = params[self.ugly_prefix()][:associate_id].to_i
+				user = User.find(user_id)
+				if user.nil? then
+					raise "associate not found"
+				else
+					self.update_contact(user.contacts.first)
+				end
+
+			elsif (self.contact_strategy == Contact::CONTACT_METHODS[3])
+
+				# published 
+				self.update_contact(nil)
+
+				# TODO: create Invitation
+			end
+		else
+			raise "party attribute data not found in params"
+		end
 	end
 
 	#
@@ -92,12 +137,12 @@ class Party < ActiveRecord::Base
 	#
 	def get_find_strategy(params)
 		if self.contact_strategy == Contact::CONTACT_METHODS[0] then
-			contact_type = params[self.ugly_prefix()][:find_type_index]
-			idx = Contact.subclasses[contact_type.to_sym].to_i
+			idx = (params[self.ugly_prefix()][:find_type_index]).to_i
+			contact_type = idx.nil? \
+				? Contact.contact_types.keys.first\
+				: Contact.contact_types.key(idx) 
 			data = params[:contact][:contact_data]
-			return idx.nil?\
-				? [Contact.contact_types[Contact.contact_types.keys.first], data]
-				: [Contact.contact_types.key(idx), data] 
+			return [contact_type, data] 
 		else
 			return nil
 		end

@@ -99,11 +99,15 @@ class Expiration < ActiveRecord::Base
 	end
 
 	def update_attributes(params)
+		self.offset = params[:offset].to_i
 		descriptor_class = self.namespaced_class(:ModelDescriptor)
-		self.offset_units = descriptor_class::TIME_UNITS.key(\
-			(params[:offset_units_index]).to_i).to_sym
+		idx = params[:offset_units_index].to_i
+		sym_name = descriptor_class::TIME_UNITS.key(idx)
+		self.offset_units = sym_name.to_sym
+		index = idx.to_s 
 		params.delete(:offset_units_index)
 		super(params)
+		params[:offset_units_index] = index
 	end
 
 	def to_s()

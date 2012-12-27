@@ -37,8 +37,6 @@ describe Contract do
 
 	describe ": class methods" do
 
-#		ContractManager.contracts.each do |contract|
-
 		CONTRACT_LIST.each do |contract|
 
 			before(:each) do
@@ -74,24 +72,20 @@ describe Contract do
 				@contract.should respond_to(:children)
 			end
 
-			it "should have valuables" do
-				@contract.should respond_to(:valuables)
-			end
-
 			it "should support an Artifact (on the Contract)" do
 				@contract.should respond_to(:artifact)
-			end
-
-			it "should have Expirations" do
-				@contract.should respond_to(:expirations)
 			end
 
 			it "should have an author email address" do
 				@contract.should respond_to(:author_email)
 			end
 
-			it "should have parties" do
+			it "should include party_roster" do
 				@contract.should respond_to(:party_roster)
+			end
+
+			it "should have all the necessary constants" do
+				@contract.valid_contract?.should be_true
 			end
 
 		end	
@@ -100,142 +94,341 @@ describe Contract do
 
 end
 
-
 describe "Transaction (Contract instance)" do
 
-	describe "initial setup" do
 
-		it "should create a valid contract" do
-			@contract = Contracts::Bet::ContractBet
-			@trans	= @contract.create!()
+	it "should create a valid contract" do
+		@klass = Contracts::Bet::ContractBet
+		@tranz	= Contract.create_tranzaction(@klass, User.find(3))
+	end
+
+	describe "methods" do
+		before(:each) do
+			@klass = Contracts::Bet::ContractBet
+			@tranz = Contract.create_tranzaction(@klass, User.find(3))
+		end
+
+		it "should include a working title() method" do
+			@tranz.should respond_to :title
+			@tranz.title.should_not be_nil
+		end
+
+		it "should include valuables" do
+			@tranz.should respond_to(:valuables)
+		end
+
+		it "should include Expirations" do
+			@tranz.should respond_to(:self_expirations)
+			@tranz.should respond_to(:goal_expirations)
+		end
+
+		it "should include an originator" do
+			@tranz.should respond_to(:originator)
+		end
+
+		it "should include a start() method" do
+			@tranz.should respond_to :start
+		end
+
+		it "should include a working house() method" do
+			@tranz.seed_tranzaction()
+			@tranz.should respond_to :house
+			@tranz.house.should_not be_nil
+			party_admin = @tranz.parties.where{type == "AdminParty"}.first
+			party_admin.contact.user.admin.should be_true
+			@tranz.house().should be == party_admin 
+		end
+
+		it "should include a goal" do
+			@tranz.class.children[0].should be == :GoalTenderOffer
+		end
+		
+		it "should include a model_instances method" do
+			@tranz.should respond_to :model_instances
+		end
+
+		it "should include a model_instance method" do
+			@tranz.should respond_to :model_instance
+		end
+
+		it "should include a latest_model_instance method" do
+			@tranz.should respond_to :latest_model_instance
+		end
+
+		it "should include a request_provision method" do
+			@tranz.should respond_to :request_provision
+		end
+
+		it "should include a expiration_for method" do
+			@tranz.should respond_to :request_expiration
 		end
 
 	end
 
-	describe "start" do
+	describe "create_tranzaction" do
+
+		it "should create a tranzaction" do
+			klass = Contracts::Bet::ContractBet
+			@tranz = Contract.create_tranzaction(klass, User.find(3))
+			@tranz.should_not be_nil
+		end	
+
 		before(:each) do
-			@contract = Contracts::Bet::ContractBet
-			@trans	= @contract.create!()
-			@trans.start()
+			klass = Contracts::Bet::ContractBet
+			@tranz = Contract.create_tranzaction(klass, User.find(3))
 		end
 
-		it "should have a working house() method" do
-			@trans.should respond_to :house
+		describe "first party" do
+			before(:each) do
+				@party1 = @tranz.parties.where{type == Contracts::Bet::Party1.to_s}.first
+			end
+
+			it "should exist" do
+				@party1.should_not be_nil
+			end
+
+			it "should have a contact of the right type" do
+				@party1.contact.should_not be_nil
+				@party1.contact.instance_of?(EmailContact).should be_true
+			end
 		end
 
-		it "should have house method that returns the right party" do
-			@trans.valid_contract?.should be_true
-			party_admin = @trans.parties.first
-			party_admin.contact.user.admin.should be_true
-			@trans.house.should be == party_admin 
+		describe "terms" do
+			it "should have been created" do
+				@tranz.artifacts.first.should_not be_nil
+				@tranz.artifacts.first.class.should be == Contracts::Bet::TermsArtifact
+			end
 		end
 
-		it "should have parties" do 
-			@trans.should respond_to :parties
+		describe "offer expiration" do
+			it "should have been created" do
+				@exp = @tranz.self_expirations.where{type \
+					== Contracts::Bet::OfferExpiration.to_s}.first
+				@exp.should_not be_nil
+			end
 		end
 
-		it "should have a first_goal" do
-			@trans.class.should respond_to :first_goal
+		describe "bet expiration" do
+			it "should have been created" do
+				@exp = @tranz.self_expirations.where{type \
+					== Contracts::Bet::BetExpiration.to_s}.first
+				@exp.should_not be_nil
+			end
 		end
 
-		it "should have the right goal" do
-			@trans.class.children[0].should be == :GoalTenderOffer
+		describe "other party not found expiration" do
+			it "should have created an expiration for finding other party" do
+				@exp = @tranz.self_expirations.where{type \
+					== Contracts::Bet::OtherPartyNotFoundExpiration.to_s}.first
+				@exp.should_not be_nil
+			end
+		end
+
+		describe "second party" do
+			it "should have been created" do
+				party2 = @tranz.parties.where{type == Contracts::Bet::Party2.to_s}
+				party2.should_not be_nil
+			end
 		end
 		
-		it "should have a request_provisioning method" do
-			@trans.should respond_to :request_provisioning
+		describe "party contact info" do
+			describe "first party contact info" do
+				it "should be user's first contact" do
+					party1 = @tranz.parties.where{type == Contracts::Bet::Party1.to_s}.first
+					party1.should_not be_nil
+					party1.contact.should_not be_nil
+					party1.contact.id.should be \
+						== party1.contact.user.contacts.first.id
+				end
+			end
+			describe "second party contact info" do
+				it "should be an EmailContact" do
+					party2 = @tranz.parties.where{type == Contracts::Bet::Party2.to_s}.first 
+					party2.should_not be_nil
+					party2.contact.should_not be_nil
+					party2.contact.class.should be == EmailContact
+				end
+			end
 		end
 
-		it "should have a model_instances method" do
-			@trans.should respond_to :model_instances
+		describe "valuables" do
+			it "should have updated party1's bet" do
+				@tranz.model_instance(Contracts::Bet::Party1Bet).should_not be_nil
+			end
+
+			it "should have updated party2's bet" do
+				@tranz.model_instance(Contracts::Bet::Party2Bet).should_not be_nil
+			end
+
+			it "should have created party1's fees" do
+				@tranz.model_instance(Contracts::Bet::Party1Fees).should_not be_nil
+			end
+
+			it "should have created party2's fees" do
+				@tranz.model_instance(Contracts::Bet::Party2Fees).should_not be_nil
+			end
+		end
+	end
+
+	describe "provision/update" do
+
+		before(:each) do
+			@params = {
+				:contracts_bet_party1_bet => {:value => Money.parse("33.00")},
+				:contracts_bet_party1_fees => {:value => Money.parse("0.99")},
+				:contracts_bet_party2_bet => {:value => Money.parse("33.00")},
+				:contracts_bet_party2_fees => {:value => Money.parse("0.99")},
+				:contracts_bet_terms_artifact => {:text => "yada yada"},
+				:contracts_bet_offer_expiration => {:offset => "2", :offset_units_index => "2"},
+				:contracts_bet_bet_expiration => {:offset =>"2", :offset_units_index => "2"},
+			}
+			klass = Contracts::Bet::ContractBet
+			@tranz	= Contract.create_tranzaction(klass, User.find(3))
+			@tranz.update_attributes(@params)
 		end
 
-		it "should have a model_instance method" do
-			@trans.should respond_to :model_instance
+		it "should have updated party1's bet" do
+			@tranz.party1_bet.value.should be \
+				== Money.parse(@params[:contracts_bet_party1_bet][:value])
 		end
 
-		it "should have a expiration_for method" do
-			@trans.should respond_to :expiration_for
+		it "should have updated party2's bet" do
+			@tranz.party2_bet.value.should be \
+				== Money.parse(@params[:contracts_bet_party1_bet][:value])
 		end
 
-		it "should have a working expiration_for method" do
-			goal = @trans.class.children[0]
-			@trans.expiration_for(goal).should_not be_nil
+		it "should have created party1's fees" do
+			@tranz.party1_fees.value.should be == Money.parse("0.99")
 		end
 
-		it "should have a working provision method" do
-			g = provision_first_goal
-			Artifact.find_by_goal_id(g.id).count.should be > 0
+		it "should have created party2's fees" do
+			@tranz.party2_fees.value.should be == Money.parse("0.99")
 		end
 
-		it "should have an artifact with the right values" do
-			g = provision_first_goal
-			artifact = Artifact.find_by_goal_id(g.id)[0]
-			artifact.a.should be == "yes" 
-			artifact.b.should be == "yes" 
-			artifact.value_cents.should be == Money.parse("$100").cents
+		it "should have updated the artifact's text" do
+			@tranz.terms_artifact.text.should be == @params[:contracts_bet_terms_artifact][:text]
 		end
 
-		it "should have 3 Parties" do 
-			g = provision_first_goal
-			g.chron
-			@trans.parties.count.should be == 3
+		it "should have updated the offer expiration" do
+			@tranz.offer_expiration.offset.should be \
+				== @params[:contracts_bet_offer_expiration][:offset].to_i
+			@tranz.offer_expiration.offset_units_index.should be \
+				== @params[:contracts_bet_offer_expiration][:offset_units_index].to_i
 		end
 
-		it "should have the right three parties" do
-			g = provision_first_goal
-			g.chron
-			@trans.model_instance(@trans.parties, :Party1).count.should be > 0
-			@trans.model_instance(@trans.parties, :Party2).count.should be > 0
+		it "should have updated the bet expiration" do
+			@tranz.bet_expiration.offset.should be \
+				== @params[:contracts_bet_bet_expiration][:offset].to_i
+			@tranz.bet_expiration.offset_units_index.should be \
+				== @params[:contracts_bet_bet_expiration][:offset_units_index].to_i
 		end
 
-		it "should have valuables" do
-			@trans.should respond_to :valuables
+		describe "find party2" do
+			before(:each) do
+				@params[@tranz.party2.ugly_prefix()] = {
+					:contact_strategy => "find",
+					:find_type_index => "2"
+				}
+				@params[:contact] = {
+					:contact_data => "user2@example.com"
+				}
+				@tranz.party2.update_attributes(@params)
+			end
+
+			it "should have the correct contact strategy" do
+				@tranz.party2.contact_strategy.should be \
+					== @params[@tranz.party2.ugly_prefix()][:contact_strategy]
+			end
+
+			it "should have correct find type" do
+				@tranz.party2.find_type_index.should be \
+					== @params[@tranz.party2.ugly_prefix()][:find_type_index].to_i
+			end
+
 		end
 
-		it "should have valuables" do
-			g = provision_first_goal
-			g.chron
-			@trans.valuables.count.should be == 2
+		before(:each) do
+			@params[@tranz.party2.ugly_prefix()] = {
+				:contact_strategy => "invite",
+				:find_type_index => "1"
+			}
+			@params[:contact] = {
+				:contact_data => "joejoe@example.com"
+			}
+			@tranz.party2.update_attributes(@params)
+		end
 
-			@trans.valuables.each do |valuable|
-				@trans.model_instance(\
-					@trans.valuables,
-					Object.const_to_symbol(valuable.class)\
-				).count.should be > 0
+		describe "invite party2" do
+		end
+
+		describe "use associate for party2" do
+			before(:each) do
+				@params[@tranz.party2.ugly_prefix()] = {
+					:contact_strategy => Contact::CONTACT_METHODS[2],
+					:find_type_index => "1",
+					:associate_id => User.find(3).id
+				}
+				@params[:contact] = {
+					:contact_data => "user2@example.com"
+				}
+				@tranz.party2.update_attributes(@params)
+			end
+
+			it "should have an associate with correct ID" do
+				@tranz.party2.associate_id.should be \
+					== @tranz.party2.get_associate_contact(User.find(3), @params).id
+			end
+		end
+
+		describe "publish for party2" do
+			before(:each) do
+				@params[@tranz.party2.ugly_prefix()] = {
+					:contact_strategy => Contact::CONTACT_METHODS[3]
+				}
+				@tranz.party2.update_attributes(@params)
+			end
+			it "should have the correct contact strategy" do
+				@tranz.party2.contact_strategy.should be \
+					== @params[@tranz.party2.ugly_prefix()][:contact_strategy]
 			end
 		end
 
 	end
 
-	describe "internal states" do
+	describe "start" do
+
 		before(:each) do
-			@contract = Contracts::Bet::ContractBet
-			@trans	= @contract.create!()
-			@trans.start()
-			@g = provision_first_goal
+			klass = Contracts::Bet::ContractBet
+			@tranz	= Contract.create_tranzaction(klass, User.find(3))
+			@params = {
+				:contracts_bet_party1_bet => {:value => Money.parse("33.00")},
+				:contracts_bet_party1_fees => {:value => Money.parse("0.99")},
+				:contracts_bet_party2_bet => {:value => Money.parse("33.00")},
+				:contracts_bet_party2_fees => {:value => Money.parse("0.99")},
+				:contracts_bet_terms_artifact => {:text => "yada yada"},
+				:contracts_bet_offer_expiration => {:offset => "2", :offset_units_index => "2"},
+				:contracts_bet_bet_expiration => {:offset =>"2", :offset_units_index => "2"},
+				@tranz.party2.ugly_prefix => {
+					:contact_strategy => Contact::CONTACT_METHODS[2],
+					:find_type_index => "1",
+					:associate_id => User.find(3).id
+				}
+			}
+
+			@tranz.update_attributes(@params)
+			@tranz.party2.update_attributes(@params)
+			@tranz.start()
 		end
 
-		it "should have a :s_ready state" do
-			@g.machine_state_name.should be == :s_create_objects
+		it "should have created the first goal" do
+			goal = @tranz.goals.first()
+			goal.should_not be_nil
 		end
 
-		it "should be in the right state after an :advance" do
-			@g.chron
-			@g.machine_state_name.should be == :s_ready
-			@g.chron
-			@g.machine_state_name.should be == :s_completed
+		it "should have an artifact with the right values" do
+			@tranz.artifacts.count.should be > 0
 		end
 
-		it "should working activate(), deactivate(), active?() methods" do
-			goal = Goal.find(1)
-			goal.activate(DateTime.now.advance(seconds: 2))
-			goal.active?.should be_true
-			goal.deactivate()
-			goal.active?.should be_false
-			goal.activate(DateTime.now.advance(seconds: 10))
-			goal.active?.should be_true
-		end
 	end
 
 end
