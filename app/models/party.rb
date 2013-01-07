@@ -69,12 +69,13 @@ class Party < ActiveRecord::Base
 
 				# associate
 				user_id = params[self.ugly_prefix()][:associate_id].to_i
-				user = User.find(user_id)
-				if user.nil? then
+				begin
+					user = User.find(user_id)
+				rescue ActiveRecord::RecordNotFound => exc
 					raise "associate not found"
-				else
-					self.update_contact(user.contacts.first)
 				end
+
+				self.update_contact(user.contacts.first)
 
 			elsif (self.contact_strategy == Contact::CONTACT_METHODS[3])
 
@@ -99,17 +100,21 @@ class Party < ActiveRecord::Base
 	#
 	# Legal description of the User (to the greatest extent possible)
 	#
-	def dba()
+	def dba(verbose=false)
+		suffix = verbose ? " (unresolved party)" : "" 
+
 		if self.contact.nil? then
-			return "#{self.class.const_to_symbol(self.class)} (unresolved party)"
+			ret = "#{self.class.const_to_symbol(self.class)}"
 		elsif !self.invitation.nil?
-			return "#{self.contact.data} has been invited to #{SITE_NAME}" 
+			suffix = " (invited to #{SITE_NAME})"
+			ret = "#{self.contact.data}"
 		elsif !self.contact.user.nil? then
-			return "#{self.contact.user.first_name} #{self.contact.user.last_name}"\
-				+ " as #{self.contact.user.username}"
+			suffix = " (#{self.contact.user.username})"
+			ret = "#{self.contact.user.first_name} #{self.contact.user.last_name}"
 		else
-			return "#{self.contact.data} (unresolved party)" 
+			ret = "#{self.contact.data}"
 		end
+		ret + (verbose ? suffix : "")
 	end
 
 	#############################################################################
@@ -123,7 +128,8 @@ class Party < ActiveRecord::Base
 	# Return the element that should be selected in the find select box 
 	#
 	def find_type_index()
-		if self.contact_strategy == Contact::CONTACT_METHODS[0] then
+		if self.contact_strategy == Contact::CONTACT_METHODS[0] \
+				or self.contact_strategy == Contact::CONTACT_METHODS[1] then
 			return self.contact.nil?\
 				? 1\
 				: Contact.subclasses[self.contact.class.to_s.to_sym]

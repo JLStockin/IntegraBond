@@ -2,53 +2,123 @@
 class User < ActiveRecord::Base
 	require 'digest'
 
-	has_one		:account, :inverse_of => :user, :dependent => :destroy
-	has_many	:contacts, :inverse_of => :user, :dependent => :destroy
+	has_one		:account, :dependent => :destroy
+	has_many	:contacts, :dependent => :destroy
 
 	attr_accessor :password
-	attr_accessible :first_name, :last_name, :password, :username,
-		:password_confirmation
+	attr_accessible :first_name, :last_name, :password, :username, :password_confirmation,
+		:email, :phone, :username_same_as_email, :active_contact
+
+	param_accessor :_username_same_as_email, :_active_contact
 
 	validates :first_name, 	:presence => true,
 							:length => { :maximum => 50 }
 	validates :last_name, 	:presence => true,
 							:length => { :maximum => 50 }
 
-	validates :password,	:presence			=> 	true,
-							:confirmation 		=> true,
+	validates :username,	:presence			=> 	true,
+							:uniqueness => { :case_sensitive => false },
 							:length				=> { :within => 6..40 }
 
-	before_save :encrypt_password
+	validates :password,	:presence			=> 	true,
+							:confirmation 		=> true,
+							:length				=> { :within => 5..40 }
 
-	# Initialize a new user's account
-	def monetize(name = "default")
-		account = self.build_account(name: name)
-		account.funds = 0
-		account.hold_funds = 0
-		account.funds_currency = "USD"
-		account.save!
-	end
+	validates_associated	:contacts,
+							:unless => lambda { self.new_record? },
+							:message => "User has no contacts"
+
+	before_validation		:update_username
+	before_save				:encrypt_password, :monetize
 
 	# Return true if the user's passsword matches the submitted password.
 	def has_password?(submitted_password)
 		self.encrypted_password == encrypt(submitted_password)
 	end
 
-	def User.authenticate(username, submitted_password)
+	def self.authenticate(username, submitted_password)
 		user = User.find_by_username(username) 
-
 		return nil if user.nil?
 		return user if user.has_password?(submitted_password)
 	end
 
-	def User.authenticate_with_salt(id, cookie_salt)
+	def self.authenticate_with_salt(id, cookie_salt)
 		user = find_by_id(id)
 		(user && user.salt == cookie_salt) ? user : nil
 	end
 
 	# Contact uses this for lookup
-	def User.find_by_contact_data(contact_data)
-		User.find_by_username(contact_data)
+	#def self.find_by_contact_data(contact_data)
+	#	self.find_by_username(contact_data)
+	#end
+
+	#
+	# Methods that should be moved to a decorator 
+	#
+	def contact_list()
+		ret = [] 
+		self.contacts.each do |c|
+			ret << [c.class::CONTACT_TYPE_NAME, c.id]
+		end
+		ret
+	end
+
+	def active_contact()
+		if self._active_contact.nil? then
+			self._active_contact = (self.contacts.nil? or self.contacts.empty?)\
+				? nil\
+				: get_contact("EmailContact").id
+		end
+		Contact.find(self._active_contact)
+	end
+
+	def active_contact=(id)
+		self._active_contact = id
+	end
+
+	def username_same_as_email()
+		_username_same_as_email = true if _username_same_as_email.nil?	
+		_username_same_as_email 
+	end
+
+	def username_same_as_email=(flag)
+		_username_same_as_email = flag
+	end
+
+	def email()
+		return nil if self.new_record?
+		c = get_contact("EmailContact")
+		c.data unless c.nil?
+	end
+
+	def email=(data)
+		c = create_or_update_contact("EmailContact", data)
+		c.save!
+		c.data
+	end
+
+	def phone()
+		return nil if self.new_record?
+		c = get_contact("SMSContact")
+		c.data unless c.nil?
+	end
+
+	def phone=(data)
+		c = create_or_update_contact("SMSContact", data)
+		c.save!
+		c.data
+	end
+
+	if Rails.env.test? then
+		def test_update_username()
+			update_username()
+		end
+		def test_create_or_update_contact(type, data)
+			create_or_update_contact(type, data)
+		end
+		def test_get_contact(the_type)
+			get_contact(the_type)
+		end
 	end
 
 	private
@@ -69,4 +139,38 @@ class User < ActiveRecord::Base
 			Digest::SHA2.hexdigest(string)
 		end
 
+		def create_or_update_contact(type, data)
+			c = get_contact(type)
+			if c.nil? then
+				c = Contact.create_contact(type.to_sym, data)
+				self.contacts << c
+			else
+				c.contact_data = data
+				c.save!
+			end
+			c
+		end
+
+		def get_contact(the_type)
+			c = self.contacts.empty? ? [] : self.contacts.where{type == the_type}
+			c = c.empty? ? nil : c.first
+		end
+
+		# Initialize a new user's account
+		def monetize(name = "default")
+			if (account.nil?) then
+				account = self.build_account(name: name)
+				account.funds = 0
+				account.hold_funds = 0
+				account.funds_currency = "USD"
+			end
+		end
+
+		# Unless User has elected to break the link between username and the EmailContact,
+		# use the email address as the username
+		def update_username()
+			return nil if self.new_record?
+			e = get_contact("EmailContact")
+			(self.username = e.data if username_same_as_email()) unless e.nil?
+		end
 end

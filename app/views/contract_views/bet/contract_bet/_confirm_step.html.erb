@@ -1,7 +1,10 @@
 <h3>Make this offer?</h3>
 <p>
-	<%= @tranzaction.terms_artifact.text.gsub('PARTY1', @tranzaction.party1.dba)\
-		.gsub('PARTY2', @tranzaction.party2.dba)\
+	<%= @tranzaction.terms_artifact.text\
+		.sub('PARTY1', @tranzaction.party1.dba(true))\
+		.gsub('PARTY1', @tranzaction.party1.dba(false))\
+		.sub('PARTY2', @tranzaction.party2.dba(true))\
+		.gsub('PARTY2', @tranzaction.party2.dba(false))\
 		.gsub('BET_AMOUNT', @tranzaction.party1_bet.value.to_s)\
 		.gsub('OFFER_EXPIRATION', @tranzaction.offer_expiration.to_s)\
 		.gsub('BET_EXPIRATION', @tranzaction.bet_expiration.to_s)\

@@ -33,12 +33,14 @@ group :development do
   gem 'sqlite3'
   gem 'annotate'
   gem 'faker', '0.3.1'
+  gem 'spork-rails'
 end
 
 group :test do
   gem 'sqlite3'
   gem 'webrat'
   gem 'factory_girl_rails', :require => false
+  gem 'spork-rails'
 end
 
 group :production do
@@ -63,3 +65,4 @@ gem 'state_machine'
 
 # To use debugger
 # gem 'ruby-debug19', :require => 'ruby-debug'
+

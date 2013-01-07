@@ -69,39 +69,10 @@ describe Contracts::Test::Party1 do
 		@party.description.should be == "First Party"
 	end
 
-	describe "dba()" do
-
-		it "should have a dba() method" do
-			@party.should respond_to(:dba)
-		end
-
-		it "should mention the username and that it's unresolved if there's no Contact "\
-				+ "or the Contact has no User" do
-			@party.contact = nil
-			@party.dba.should be == "Party1 (unresolved party)"
-		end
-
-		it "should mention the username and that it's unresolved if Contact has no User" do
-			@party.update_contact(@unresolved_contact)
-			@party.dba.should be == "user1@example.com (unresolved party)"
-		end
-
-		it "should have user's first, last and username in dba() "\
-				+ "if fully resolved, but no invite" do 
-			@party.dba.should be == "Chris Schille as user1@example.com"
-		end
-
-		it "should have username if invitation issued" do
-			@party.update_contact(@unresolved_contact)
-			invitation = Invitation.new()
-			invitation.party = @party
-			invitation.save!
-			@party.dba.should be == "user1@example.com has been invited to IntegraBond"
-		end
-	end
 
 	describe "attribute accessors" do
-		describe "map contact type to index in type list" do
+
+		describe "used to map contact type to index" do
 
 			it "should have a find_type_index method" do
 				@party.should respond_to(:find_type_index)
@@ -128,7 +99,8 @@ describe Contracts::Test::Party1 do
 
 		end
 
-		describe "get find result" do
+		describe "used to fetch the find result" do
+
 			it "should fetch data needed to create a new Contact" do
 				@party.should respond_to(:get_find_strategy)
 				@party.contact_strategy = Contact::CONTACT_METHODS[0]
@@ -190,5 +162,86 @@ describe Contracts::Test::Party1 do
 			end
 		end
 			
+	end
+
+	describe "dba()" do
+
+		it "should have a dba() method" do
+			@party.should respond_to(:dba)
+		end
+
+		describe "with no Contact" do
+
+			describe "when suffix requested" do
+				it "should display the right thing" do 
+					@party.contact = nil
+					@party.dba(true).should be == "Party1 (unresolved party)"
+				end
+			end
+
+			describe "when suffix not requested" do
+				it "should display the right thing" do 
+					@party.contact = nil
+					@party.dba(false).should be == "Party1"
+				end
+			end
+		end
+
+		describe "with Contact, but no user" do
+
+			describe "when suffix requested" do
+				it "should display the right thing" do 
+					@party.contact = FactoryGirl.build(:seller_email_contact)
+					@party.contact.user = nil
+					@party.dba(true).should be == "seller@example.com (unresolved party)"
+				end
+			end
+
+			describe "when suffix not requested" do
+				it "should display the right thing" do 
+					@party.contact = FactoryGirl.build(:seller_email_contact)
+					@party.contact.user = nil
+					@party.dba(false).should be == "seller@example.com"
+				end
+			end
+		end
+
+		describe "with Contact and user" do
+
+			describe "when suffix requested" do
+				it "should display the right thing" do 
+					@party.contact = FactoryGirl.build(:seller_email_contact)
+					@party.dba(true).should be == "Mr Seller (seller@example.com)"
+				end
+			end
+
+			describe "when suffix not requested" do
+				it "should display the right thing" do 
+					@party.contact = FactoryGirl.build(:seller_email_contact)
+					@party.dba(false).should be == "Mr Seller (seller@example.com)"
+				end
+			end
+
+		end
+
+		describe "with invitation" do
+
+			describe "when suffix requested" do
+				it "should display the right thing" do 
+					@party.contact = FactoryGirl.build(:seller_email_contact)
+					@party.invitation = FactoryGirl.build(:party2_invite)
+					@party.dba(true).should be == "seller@example.com (invited to IntegraBond)"
+				end
+			end
+
+			describe "when suffix not requested" do
+				it "should display the right thing" do 
+					@party.contact = FactoryGirl.build(:seller_email_contact)
+					@party.invitation = FactoryGirl.build(:party2_invite)
+					@party.dba(false).should be == "seller@example.com"
+				end
+			end
+
+		end
 	end
 end

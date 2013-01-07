@@ -2,7 +2,6 @@ require 'spec_helper'
 
 describe Account do
 	
-	MZERO = Money.parse(0) 
 	TWO_HUNDRED = Money.parse(200)
 	ONE_FIFTY = Money.parse(150)
 	HUNDRED = Money.parse(100)
@@ -14,7 +13,7 @@ describe Account do
 	TWO = Money.parse(2)
 
 	before(:each) do
-		@user = FactoryGirl.build(:user_without_account)
+		@user = FactoryGirl.build(:seller_user)
 		@account = @user.build_account()
 	end
 
@@ -262,8 +261,8 @@ end
 
 describe "Account tranfers" do
 	before(:each) do
-		@from_user = FactoryGirl.build(:user_without_account)
-		@to_user = FactoryGirl.build(:user_without_account)
+		@from_user = FactoryGirl.build(:seller_user)
+		@to_user = FactoryGirl.build(:seller_user)
 
 		@from_account = @from_user.build_account(@attr)
 		@from_account.set_funds(HUNDRED, FIFTY)

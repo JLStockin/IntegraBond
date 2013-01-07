@@ -14,12 +14,8 @@ module PartiesHelper
 	# based on current_user.  user == current_user is valid.
 	#
 	def associates_list()
-		assocs = Contract.associates_for(current_user()).all.inject([]) do |ret, assoc|
-			unless (assoc.id == 2) then
-				ret << [assoc.username, assoc.id]
-			end
-		end
-		assocs
+		assocs = Contract.associates_for(current_user()).all.inject([]) \
+			{ |ret, assoc| ret << ([assoc.username, assoc.id] unless assoc.id == 2) }.compact
 	end
 
 end

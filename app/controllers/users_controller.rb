@@ -33,9 +33,9 @@ class UsersController < ApplicationController
 			return
 		else
 			@user = User.new(params[:user])
-			@account = @user.build_account() # Need to extract the account params
 
 			if @user.save
+				
 				sign_in @user
 				flash[:success] = "Welcome to #{SITE_NAME}."
 				redirect_to @user
@@ -53,9 +53,10 @@ class UsersController < ApplicationController
 	end
 
 	def update
+		@user = current_user()
 		if @user.update_attributes(params[:user])
 			flash[:success] = "Profile updated."
-			redirect_to @user
+			redirect_to tranzactions_path and return
 		else
 			@title = "#{@user.first_name} #{@user.last_name}"
 			render 'edit'

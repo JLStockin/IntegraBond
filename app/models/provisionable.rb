@@ -1,7 +1,7 @@
 ##############################################################################
 #
 # **Extend** this Module to have the PARAMS hash turned into its own hash with
-# accessors
+# accessors.  The data hash is serialized into _ar_data_ using YAML.
 #
 module Provisionable
 
@@ -18,7 +18,32 @@ module Provisionable
 		end
 	end
 
-	def provisionable
+	#
+	# This allows us to muck with a subclass during inherited, but *after*
+	# we've interpreted the class contents
+	#
+	def after_inherited(child = nil, &blk)
+		line_class = nil
+		set_trace_func(\
+			lambda do |event, file, line, id, binding, classname|
+				if line_class.nil?
+					# save the line of the inherited class entry
+					if event == 'class' then
+						line_class = line
+					end
+				else
+					# check the end of inherited class
+					if event == 'end' then
+						# if so, turn off the trace and call the block
+						set_trace_func nil
+						blk.call child
+					end
+				end
+			end
+		)
+	end
+
+	def provisionable?
 		params().nil? ? false : true
 	end
 

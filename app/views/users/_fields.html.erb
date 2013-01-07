@@ -1,22 +1,46 @@
 <%= render 'shared/error_messages', :object => f.object %>
 
-<div class="field">
-  <%= f.label :first_name %><br />
-  <%= f.text_field :first_name %>
-</div>
-<div class="field">
-  <%= f.label :last_name %><br />
-  <%= f.text_field :last_name %>
-</div>
-<div class="field">
-  <%= f.label :username%><br />
-  <%= f.text_field :username%>
-</div>
-<div class="field">
-  <%= f.label :password %><br />
-  <%= f.password_field :password %>
-</div>
-<div class="field">
-  <%= f.label :password_confirmation, "Confirmation" %><br />
-  <%= f.password_field :password_confirmation %>
-</div>
+<fieldset>
+	<div class="field">
+		<%= f.label :first_name %>
+		<%= f.text_field :first_name, :placeholder => "Your Firstname" %>
+		<%= f.label :last_name %>
+		<%= f.text_field :last_name, :placeholder => "Your Lastname" %><br />
+	</div>
+	<div class="field">
+		<% default_email = "your_email@example.com" %>
+		<% default_phone = "408-555-0100" %>
+		<%= f.label :email %>
+		<%= f.text_field :email, :placeholder => default_email %>
+		<%= f.label :phone %>
+		<%= f.text_field :phone, :placeholder => default_phone %><br />
+
+		<%= f.label :username%>
+		<% if f.object.username_same_as_email then %>
+			<%= f.text_field :username, :placeholder => default_email, :readonly => true %>
+		<% else %>
+			<%= f.text_field :username, :placeholder => default_email %>
+		<% end %>
+
+		<%= f.check_box :username_same_as_email %>
+		<%= f.label :username_same_as_email %><br />
+
+		<% unless f.object.contact_list.empty? then %>
+			<br />
+			<%= f.label(:active_contact, "Transaction notifications sent:") %>
+			<%= f.select(:active_contact, f.object.contact_list) %>
+			<br />
+		<% end %>
+
+		<% if false then %>
+			<a href="http://gravatar.com/emails" target=_blank>Image</a>
+			<%= gravatar_for @user %><br />
+		<% end %>
+	</div>
+	<div class="field">
+		<%= f.label :password %>
+		<%= f.password_field :password %>
+		<%= f.label :password_confirmation, "Confirmation" %>
+		<%= f.password_field :password_confirmation %>
+	</div>
+</fieldset>

@@ -1,7 +1,6 @@
 <h2>Create a Bet</h2>
 
 <%= form_for(@party, :url => { :action => "update" }) do |party_builder| %>
-<% Rails.logger.info("party_builder.object  = #{party_builder.object}") %>
 	<%= render 'shared/error_messages', :object => party_builder.object %>
 	<%= render 'party', :f => party_builder, :object => party_builder.object %>
 <% end %>

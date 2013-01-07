@@ -29,13 +29,13 @@
 								<% if current_user?(parties[klass].contact.user) then %>
 									<%= "You" %>
 								<% else %>
-									<%= link_to "#{parties[klass].contact.user.username}",
+									<%= link_to "#{parties[klass].dba(true)}",
 										parties[klass].contact.user %>
 								<% end %>
 							</td>
 						<% else %>
 							<td>
-								<%= "#{parties[klass].dba} " %>
+								<%= "#{parties[klass].dba(true)} " %>
 							</td>
 						<% end %>
 					<% end %>

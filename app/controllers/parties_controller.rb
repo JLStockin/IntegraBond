@@ -30,11 +30,12 @@ class PartiesController < ApplicationController
 		if	@party.contact_strategy == Contact::CONTACT_METHODS[0] then
 
 			# Find
+			contact = @party.contact
 			matches = Contact.get_contacts(
 				contact.class,
 				contact.contact_data
 			)
-			if new_contacts.nil? then
+			if matches.empty? then
 				flash[:notice] = 	
 					"#{SITE_NAME} user for '#{@party.contact.contact_data}' "\
 						+ "could not be found.  Invite to #{SITE_NAME}?"
@@ -56,7 +57,7 @@ class PartiesController < ApplicationController
 			@party.tranzaction.resume()
 			redirect_to(
 				edit_tranzaction_path(@party.tranzaction),
-				:notice => "#{@party.dba} will be invited to #{SITE_NAME}"
+				:notice => "#{@party.dba(false)} will be invited to #{SITE_NAME}"
 			) and return
 
 		elsif @party.contact_strategy == Contact::CONTACT_METHODS[2] then
@@ -70,7 +71,7 @@ class PartiesController < ApplicationController
 				@party.tranzaction.resume()
 				redirect_to(
 					edit_tranzaction_path(@party.tranzaction),
-					:notice => "Party identified: #{@party.contact.dba}"
+					:notice => "Party identified: #{@party.dba(true)}"
 				) and return
 			end
 

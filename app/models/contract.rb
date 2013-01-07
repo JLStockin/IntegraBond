@@ -33,6 +33,9 @@
 #   - request that an Artifact be created
 #   - request that an Expiration be created
 #
+# To get the whole process started, Contract has some basic properties of a Goal
+# (CHILDREN (Goals), ARTIFACT, and EXPIRATIONS).
+#
 class Contract < ActiveRecord::Base
 
 	self.table_name = "tranzactions"
@@ -42,7 +45,6 @@ class Contract < ActiveRecord::Base
 	#
 	include ActiveModel::Validations
 
-	# Associations created through controller 
 	has_many	:parties, class_name: Party, foreign_key: :tranzaction_id,
 					dependent: :destroy, autosave: true
 	has_many	:valuables, foreign_key: :tranzaction_id, dependent: :destroy, autosave: true
@@ -84,8 +86,15 @@ class Contract < ActiveRecord::Base
 		raise "Contract must be subclassed" if self.class == Contract
 
 		# Create the party corresponding to admin
-		admin = User.find(2); raise "administrator party not found" if !admin.admin
-		::AdminParty.create!(tranzaction_id: self.id, contact_id: admin.contacts[0].id)
+		admin = User.where{users.admin == true}
+		if !admin.nil? then
+			raise "more than one administrator found!" if admin.count > 1
+			admin = admin.first
+		else
+			raise "administrator party not found"
+		end
+		raise "administrator has no Contacts" if admin.contacts.nil? or admin.contacts.empty?
+		AdminParty.create!(tranzaction_id: self.id, contact_id: admin.contacts[0].id)
 
 	end
 
@@ -115,8 +124,8 @@ class Contract < ActiveRecord::Base
 
 		raise "#{subclass_sym} not found in class hierarchy"\
 			if hierarchy_depth == MAX_HIERARCHY_DEPTH
-		instance_eval("#{table_class.to_s.downcase.pluralize}.select\
-			{|r| r.class == #{sub_class}}")
+
+		table_class.where{self.type == sub_class.to_s}.all
 	end
 
 	#
@@ -172,13 +181,6 @@ class Contract < ActiveRecord::Base
 		define_method(setter) do |value|
 			instance_variable_set(var, value)
 		end
-	end
-
-	#
-	# Given a model object classname, obtain the reader (as defined above) for it. 
-	#
-	def classname_to_getter(class_name)
-		self.send(class_name.to_s.underscore)
 	end
 
 	#
@@ -355,7 +357,6 @@ class Contract < ActiveRecord::Base
 				party.contact_strategy = Contact::CONTACT_METHODS[0]
 			end
 			self.parties << party 
-			party.save!
 		end
 		return self.parties 
 	end

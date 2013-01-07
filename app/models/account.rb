@@ -23,7 +23,7 @@ class Account < ActiveRecord::Base
   
 	attr_accessible		:name
 
-	belongs_to :user
+	belongs_to :user, inverse_of: :account
 
 	validates_with		::AccountValidator
 

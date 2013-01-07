@@ -36,10 +36,18 @@ shared_examples_for "any valuable" do
 end
 
 def create_parties
+	user = FactoryGirl.create(:buyer_user)
+	email = FactoryGirl.build(:buyer_email)
+	user.contacts << email
 	@party1 = FactoryGirl.create(:party1)
+	@party1.contact = email
 	@party1.contact.user.account.set_funds(1000, 0)
 
+	user = FactoryGirl.create(:seller_user)
+	email = FactoryGirl.build(:seller_email)
+	user.contacts << email
 	@party2 = FactoryGirl.create(:party2)
+	@party2.contact = email
 	@party2.contact.user.account.set_funds(1000, 0)
 end
 

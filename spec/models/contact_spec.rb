@@ -1,243 +1,303 @@
 require 'spec_helper'
+require 'contact'
 
-CONTACT_TYPES_TO_TEST = [EmailContact, SMSContact, UsernameContact]
+##############################################################################
+#
+# Helpers follow. 
+#
+module ContactTesting
 
-describe Contact do
+	#
+	# constants
+	#
+	USER_DATA = {
+		:user1 =>\
+		{
+			first_name: "Chris", last_name: "Schille",
+			password: "foobar",
+			username: "user1@example.com"
+		}, 
+		:user2 =>\
+		{
+			first_name: "Sali", last_name: "Schille",
+			password: "foobar",
+			username: "user2@example.com"
+		}
+	}
 	
+	CONTACT_DATA = {
+		:user1 =>\
+		{
+			EmailContact:		"user1@example.com",
+			SMSContact:			"408-555-1002",
+			UsernameContact:	"user1@example.com"
+		},
+	
+		:user2 =>\
+		{
+			EmailContact:		"user2@example.com",
+			SMSContact:			"408-555-1003",
+			UsernameContact:	"user2@example.com"
+		}
+	}
+
+	BAD_DATA = {
+		EmailContact: "shmo.com",
+		SMSContact: "555-abcd",
+		UsernameContact: "fred" 
+	}
+
+	#
+	# RSpec.configure {|c| c.extend(DescribeHelpers)} --
+	# to make this available in any describe block
+	#
+	module DescribeHelpers 
+		def test_contact_types
+			CONTACT_DATA[:user1].keys
+		end
+	end
+
+	#
+	# RSpec.configure {|c| c.include(ItHelpers)} --
+	# to make this available in any spec ('it') block
+	#
+	module ItHelpers
+		#
+		# Helpers
+		# 
+
+		def tested_contact_type?(sym)
+			CONTACT_DATA.first[1].keys.include?(sym)
+		end
+
+		def users()
+			USER_DATA.keys
+		end
+	
+		def test_create_user(user_sym)
+			User.create!(USER_DATA[user_sym])
+		end
+	
+		def test_contact_data(user_sym, type)
+			CONTACT_DATA[user_sym][type]
+		end
+	
+		def create_new_user_and_contact(user_sym, contact_class_sym)
+			user = test_create_user(user_sym)
+			data = test_contact_data(user_sym, contact_class_sym)
+			contact = Contact.create_contact(contact_class_sym, data)
+			user.contacts << contact
+			return [user, contact]
+		end
+	end
+end
+
+
+####################################################################################
+#
+# Shared examples begin here...
+#
+shared_examples_for "SMSContact" do
+
 	before(:each) do
-		@user ||= FactoryGirl.create(:seller_user)
-		@username = FactoryGirl.build(:seller_username_contact)
-		@username.user_id = @user.id
-
-		@email = FactoryGirl.build(:seller_email_contact)
-		@email.user_id = @user.id
-
-		@phone = FactoryGirl.build(:seller_sms_contact)
-		@phone.user_id = @user.id
+		@number_in = "(606)555-1212"
+		@number_out = "6065551212"
 	end
 
-	it "should test all Contacts" do
-		Contact.contact_types.count.should be == 3
-	end
-
-	it "should have these contact types" do
-		CONTACT_TYPES_TO_TEST.each do |klass|	
-			Contact.subclasses.keys.include?(klass.to_s.to_sym).should be_true
+	["707-444-4045", "(707)555-1212", "800-354-2888", "(800) 438-1244"].each do |good_number|
+		it "should allow '#{good_number}'" do
+			instance.contact_data = good_number 
+			instance.should be_valid
 		end
 	end
 
-	it "should create an instance given valid attributes" do
-		@email.save!
-		@phone.save!
-		@username.save!
+	["5434", "12-1234", "1-800-usaloan", "", "abcdefg"].each do |bad_number|
+		it "should flag '#{bad_number}'" do
+			instance.contact_data = bad_number 
+			instance.should_not be_valid
+		end
 	end
 
-	it "should flag bad email addresses" do
-		contact = FactoryGirl.build(:seller_email_contact)
-		contact.contact_data = "joe.com"
-		contact.should_not be_valid
-		contact.contact_data = ""
-		contact.should_not be_valid
+	it "should display sms numbers with correct punctuation" do
+		instance.contact_data = @number_in 
+		instance.data.should be == ActionController::Base.helpers.number_to_phone(
+			instance.contact_data.to_i
+		)
 	end
 
-	it "should flag a bad phone number" do
-		contact = FactoryGirl.build(:seller_sms_contact)
-		contact.contact_data = "foo"
-		contact.should_not be_valid
-		contact.contact_data = ""
-		contact.should_not be_valid
+	it "should save sms numbers without punctionation" do
+		instance.contact_data = @number_in 
+		instance.save!
+		instance.reload
+		instance.contact_data.should be == @number_out 
+		instance.data.should be == ActionController::Base.helpers.number_to_phone(
+			instance.contact_data
+		)
 	end
 
-	it "should flag a bad username" do
-		contact = FactoryGirl.build(:seller_username_contact)
-		contact.contact_data = "foo"
-		contact.should_not be_valid
-		contact.contact_data = ""
-		contact.should_not be_valid
+end
+
+shared_examples_for "UsernameContact" do
+
+	before(:each) do
+		@name = "Jeffro1228"
+		@email = "Jeffro1228@Example.com"
 	end
 
-	describe "data reader" do
-
-		it "should display usernames in lowercase" do
-			contact = FactoryGirl.build(:seller_username_contact)
-			contact.contact_data = "User100@Example.com"
-			contact.data.should be == "user100@example.com"	
+	["sally454", "cschille@example.com", "cschille", "typo_man"].each do |good_name|
+		it "should allow '#{good_name}'" do
+			instance.contact_data = good_name 
+			instance.should be_valid
 		end
+	end
 
-		it "should save usernames in lowercase" do
-			contact = FactoryGirl.build(:seller_username_contact)
-			contact.contact_data = "User100@Example.com"
-			contact.save!
-			contact.data.should be == "user100@example.com"	
-
+	["12:23", "", "abcde", "asdfasdfas dfasdfasdf asdfasdfas dfasdfaaaa fda4fac7d0"]\
+			.each do |bad_name|
+		it "should flag '#{bad_name}'" do
+			instance.contact_data = bad_name 
+			instance.should_not be_valid
 		end
+	end
+	
+	it "should display usernames in lowercase" do
+		instance.contact_data = @name
+		instance.data.should be == @name.downcase
+	end
 
-		it "should display email address in lowercase" do
-			contact = FactoryGirl.build(:seller_email_contact)
-			contact.contact_data = "User200@Example.com"
-			contact.data.should be == "user200@example.com"	
-		end
+	it "should save usernames in lowercase" do
+		instance.contact_data = @email 
+		instance.save!
+		instance.reload
+		instance.data.should be == @email.downcase 
+	end
 
-		it "should save email addresses in lowercase" do
-			contact = FactoryGirl.build(:seller_email_contact)
-			contact.contact_data = "User200@Example.com"
-			contact.save!
-			contact.data.should be == "user200@example.com"	
-		end
+end
 
-		it "should display phone numbers with correct punctuation" do
-			contact = FactoryGirl.build(:seller_sms_contact)
-			contact.contact_data = "6065551212"
-			contact.data.should be == ActionController::Base.helpers.number_to_phone(
-				contact.contact_data
-			)
-		end
+shared_examples_for "EmailContact" do
+	before(:each) do
+		@email = "User200@Example.com" 
+	end
 
-		it "should save phone numbers without punctionation" do
-			contact = FactoryGirl.build(:seller_sms_contact)
-			contact.contact_data = "(606)555-1212"
-			contact.save!
-			contact.contact_data.should be == "6065551212"
-			contact.data.should be == ActionController::Base.helpers.number_to_phone(
-				contact.contact_data
-			)
-		end
+	it "should display email address in lowercase" do
+		instance.contact_data = @email 
+		instance.data.should be == @email.downcase 
+	end
 
+	it "should save email addresses in lowercase" do
+		instance.contact_data = @email 
+		instance.save!
+		instance.reload
+		instance.data.should be == @email.downcase 
 	end
 
 	describe "normalize" do
-		before(:each) do
-			@c = EmailContact.new
-			@c.user = User.find(3)
-			@data = "User2@Example.com"
-			@c.contact_data = @data
+
+		it "should be a method" do
+			instance.should respond_to(:normalize)
 		end
 
 		it "should have a working instance method" do
-			@c.normalize
-			@c.contact_data.should be == @data.downcase 
+			instance.contact_data = @email
+			instance.normalize
+			instance.contact_data.should be == @email.downcase 
+		end
+
+		it "should be a class method too" do
+			instance.should respond_to(:normalize)
 		end
 
 		it "should have a working class method" do
-			@c.class.normalize(@data).should be == @data.downcase 
+			instance.class.normalize(@email).should be == @email.downcase 
 		end
 	end
 
-	describe "data writer" do
+end
 
-		it "should write usernames in lowercase" do
-			contact = FactoryGirl.build(:seller_username_contact)
-			contact.data = "User300@Example.com"
-			contact.data.should be == "user300@example.com"	
-			contact.save!
-			contact.reload
-			contact.contact_data.should be == "user300@example.com"	
-			contact.data.should be == "user300@example.com"
-		end
+describe Contact do
 
-		it "should write email address in lowercase" do
-			contact = FactoryGirl.build(:seller_email_contact)
-			contact.data = "User400@Example.com"
-			contact.data.should be == "user400@example.com"	
-			contact.save!
-			contact.reload
-			contact.contact_data.should be == "user400@example.com"	
-			contact.data.should be == "user400@example.com"
-		end
-
-		it "should write phone numbers without punctuation" do
-			contact = FactoryGirl.build(:seller_sms_contact)
-			contact.data = "5055551212"
-			contact.save!
-			contact.reload
-			contact.contact_data.should be == "5055551212"
-			contact.data.should be == ActionController::Base.helpers.number_to_phone(
-				contact.contact_data
-			)
-		end
-
+	RSpec.configure do |c|
+		c.include ContactTesting::ItHelpers
+		c.extend ContactTesting::DescribeHelpers
 	end
 
-	describe "get_contacts" do
+	####################################################################################
+	#
+	# Tests begin here...
+	#
+	describe "#contact_types" do
 
-		it "should have this class method" do
-			Contact.should respond_to(:get_contacts)
-		end
-
-		it "should work for each type" do
-			CONTACT_TYPES_TO_TEST.each do |klass|
-				key = "seller_#{klass.to_s.underscore}"
-				contact_data = FactoryGirl.attributes_for(key)[:contact_data] 
-				c = klass.new()
-				c.contact_data = ((klass == UsernameContact) ? @user.username : contact_data)
-				c.user_id = @user.id 
-				c.save!
-				result = Contact.get_contacts(
-					klass,
-					klass == UsernameContact ? @user.username : contact_data
-				)
-				result.count.should be >= 1
-			end
-		end
-
-		it "should return multiple objects where appropriate" do
-			dup = FactoryGirl.build(:seller_email_contact)
-			dup.user_id = 4
-			dup.save!
-			dup = FactoryGirl.build(:seller_email_contact)
-			dup.user_id = 5
-			dup.save!
-			Contact.get_contacts(dup.class, dup.contact_data).count.should be >= 2
-		end
-
-		it "should fail gracefully" do
-			Contact.get_contacts(EmailContact, "putz@foo.bar").empty?.should be_true
-		end
-	end
-
-	describe "create_contact" do
-
-		it "should create all Contact types" do
-			CONTACT_TYPES_TO_TEST.each do |klass|
-				c = Contact.create_contact(
-					klass,
-					(klass == SMSContact)\
-						? "1005551212"\
-						: "highnoon@example.com"
-				)
-				c.should be_valid
-			end
-		end
-	end
-
-	it "email should have a resolved? method" do
-		@email.should respond_to(:resolved?)
-		@email.resolved?.should be_true
-	end
-
-	it "phone should have a resolved? method" do
-		@phone.should respond_to(:resolved?)
-		@phone.resolved?.should be_true
-	end
-
-	it "username should have a resolved? method" do
-		@username.should respond_to(:resolved?)
-		@username.resolved?.should be_true
-	end
-
-	describe "types" do
-		it "should be a class method on Contact" do
+		it "should be a class method" do
 			Contact.should respond_to(:contact_types)
 		end
 
-		it "should return three tuples" do
-			Contact.contact_types.count.should be == 3
+	end
+
+	describe "class not included in test suite(!): " do
+		Contact.subclasses.keys.each do |sym|	
+			it "#{sym.to_s}" do
+				tested_contact_type?(sym).should be_true
+			end
+		end
+	end
+
+	describe "(Email)" do
+		it_behaves_like "EmailContact" do
+			let(:instance) {
+				create_new_user_and_contact(:user1, :EmailContact)[1]
+			}
+		end
+	end
+
+	describe "(SMS)" do
+		it_behaves_like "SMSContact" do
+			let(:instance) {
+				create_new_user_and_contact(:user1, :SMSContact)[1]
+			}
+		end
+	end
+
+	describe "(Username)" do
+		it_behaves_like "UsernameContact" do
+			let(:instance) {
+				create_new_user_and_contact(:user1, :UsernameContact)[1]
+			}
+		end
+	end
+
+
+	describe "searching" do
+
+		it "should be have ::matching_contacts" do
+			Contact.should respond_to(:matching_contacts)
 		end
 
-		it "hashes should consist of a symbol and an index number" do
-			key = Contact.contact_types.keys[0]	
-			key.instance_of?(Symbol).should be_true
-			Contact.contact_types[key].instance_of?(Fixnum).should be_true
+		test_contact_types.each do |sym|
+
+			it "should find one instance of #{sym.to_s}" do
+
+				create_new_user_and_contact(:user1, sym)
+
+				matches = Contact.matching_contacts(sym.to_s, test_contact_data(:user1, sym))
+				matches.count.should be == 1
+			end
+
+			it "should find two instances of #{sym.to_s}" do
+				contact = create_new_user_and_contact(:user1, sym)[1]
+				# Create dup Contact for second User with 1st User's contact_data 
+				user2 = create_new_user_and_contact(:user2, sym)[0]
+				data = test_contact_data(:user1, sym)
+				contact = Contact.create_contact(sym, data)
+				user2.contacts << contact
+
+				matches = Contact.matching_contacts(sym.to_s, data)
+				matches.count.should be == 2
+			end
+
+			it "should find no instances of #{sym.to_s}" do
+
+				result = Contact.matching_contacts(sym.to_s, test_contact_data(:user1, sym))
+				result.count.should be == 0
+			end
 		end
 	end
 

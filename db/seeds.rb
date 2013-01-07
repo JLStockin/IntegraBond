@@ -57,7 +57,11 @@ user_data.each do |attrs|
 	sms.user = user
 	sms.save!
 
-	user.monetize("default")
+	username = UsernameContact.new()
+	username.data = attrs[:email]
+	username.user = user
+	username.save!
+
 	user.account.set_funds("$1000", 0)
 	user.account.save!
 end

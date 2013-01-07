@@ -1,3 +1,6 @@
+require 'contact'
+
+ADMIN_EMAIL = "admin@example.com"
 
 FactoryGirl.define do
 
@@ -25,30 +28,33 @@ FactoryGirl.define do
 	#
 	# User 
 	#
-	factory :user_without_account, class: User do |the_user|
+	factory :basic_user, class: User do |user|
 
-		the_user.password				"foobar"
-		the_user.password_confirmation	{ |n| n.password }	
+		user.password					"foobar"
+		user.password_confirmation		{ |n| n.password }	
 
-		factory :user, class: User do |user|
-			association	:account,		factory: :buyer_account
-			user.first_name				"Seymore"
-			user.last_name				"Butts"
-			user.username				"sbutts@example.com"
+		factory :user_attributes, class: User do |user|
+			user.first_name				"Seymour"
+			user.last_name				"Butz"
+			user.username				"sbutz@example.com"
 		end
 
 		factory :buyer_user, class: User do |user|
-			association	:account,		factory: :buyer_account
 			user.first_name				"Ms"
 			user.last_name				"Buyer"
 			user.username				"buyer@example.com"
 		end
 
 		factory :seller_user, class: User do |user|
-			association	:account,		factory: :seller_account
 			user.first_name				"Mr"
 			user.last_name				"Seller"
 			user.username				"seller@example.com"
+		end
+
+		factory :admin_user, class: User do |user|
+			user.first_name					"M"
+			user.last_name					"Admin"
+			user.username					ADMIN_EMAIL	
 		end
 	end
 
@@ -76,37 +82,64 @@ FactoryGirl.define do
 
 	######################################################################
 	#
-	# Contact 
+	# The seeded data already in the DB
 	#
-	factory :seller_email_contact, class: EmailContact do |contact|
-		association :user,			factory: :seller_user
-		contact.contact_data		"seller@example.com"
+	factory :user1_email, class: EmailContact do |contact|
+		contact.contact_data		"cschille@example.com"
 	end
 
-	factory :buyer_email_contact, class: EmailContact do |contact|
-		association :user,			factory: :buyer_user
-		contact.contact_data		"buyer@example.com"
-	end
-
-	factory :seller_username_contact, class: UsernameContact do |contact|
-		association :user,			factory: :seller_user
-		contact.contact_data		"seller@example.com"
-	end
-
-	factory :buyer_username_contact, class: UsernameContact do |contact|
-		association :user,			factory: :buyer_user
-		contact.contact_data		"buyer@example.com"
-	end
-
-	factory :seller_sms_contact, class: SMSContact do |contact|
-		association :user,			factory: :buyer_user
-		contact.contact_data		"4085551001"
-	end
-
-	factory :buyer_sms_contact, class: SMSContact do |contact|
+	factory :user1_sms, class: SMSContact do |contact|
 		contact.contact_data		"4085551002"
-		association :user,			factory: :buyer_user
 	end
 
+	factory :user1_username, class: UsernameContact do |contact|
+		contact.contact_data		"cschille1@example.com"
+	end
+
+	factory :user2_email, class: EmailContact do |contact|
+		contact.contact_data		"sinolean@example.com"
+	end
+
+	factory :user2_sms, class: SMSContact do |contact|
+		contact.contact_data		"4085551003"
+	end
+
+	factory :user2_username, class: UsernameContact do |contact|
+		contact.contact_data		"sinolean@example.com"
+	end
+
+	factory :admin_email, class: EmailContact do |contact|
+		contact.contact_data		ADMIN_EMAIL	
+		association :user,			factory: :admin_user
+	end
+
+	######################################################################
+	#
+	# User-less Contacts
+	#
+
+	factory :seller_email, class: EmailContact do |contact|
+		contact.contact_data		"seller@example.com"
+	end
+
+	factory :buyer_email, class: EmailContact do |contact|
+		contact.contact_data		"buyer@example.com"
+	end
+
+	factory :seller_username, class: UsernameContact do |contact|
+		contact.contact_data		"seller@example.com"
+	end
+
+	factory :buyer_username, class: UsernameContact do |contact|
+		contact.contact_data		"buyer@example.com"
+	end
+
+	factory :seller_sms, class: SMSContact do |contact|
+		contact.contact_data		"4085551004"
+	end
+
+	factory :buyer_sms, class: SMSContact do |contact|
+		contact.contact_data		"4085551005"
+	end
 end
 

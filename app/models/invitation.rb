@@ -17,7 +17,6 @@ class Invitation < ActiveRecord::Base
 	# to change to a new Contact for herself in this Tranzaction.
 	#
 	def can_accept?(new_contact)
-		return true if new_contact.is_a?(PublishedContact)
 		return false if new_contact.resolved?()
 		return self.contact.contact_data == new_contact.contact_data
 	end
