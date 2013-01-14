@@ -2,10 +2,7 @@
 #
 # Expirations configure the behavior of a Goal by allowing it to respond to the passage
 # of time.  Expirations create an Artifact and set the Goal's state to :s_expired.
-# An Expiration is created and configured when the tranzaction is.  Therefore,
-# it must be bound to the Goal when the Goal is created; hence, the polymorphic
-# 'owner' field: this allows us to transfer ownership from the Tranzaction to the
-# Goal.
+# An Expiration is created and configured when the tranzaction is.
 #
 class ExpirationCallbackHook
 	def self.before_create(record)
@@ -15,8 +12,10 @@ class ExpirationCallbackHook
 end
 
 class Expiration < ActiveRecord::Base
-	belongs_to :owner, polymorphic: true
-	validates :owner, presence: true
+	belongs_to	:tranzaction, foreign_key: :tranzaction_id, class_name: Contract
+	belongs_to :goal
+
+	validates :tranzaction, presence: true
 
 	attr_accessible :offset, :offset_units, :type
 	attr_accessor :offset_units_index
@@ -29,10 +28,10 @@ class Expiration < ActiveRecord::Base
 	before_create ExpirationCallbackHook
 
 	def bind(goal)
-		self.owner = goal
+		self.goal = goal
 		model_instance = self.tranzaction.model_instance(self.class.basis_type)
 		self.value =
-			self.owner.namespaced_class(self.class.basis_type).constantize.find(
+			self.goal.namespaced_class(self.class.basis_type).constantize.find(
 				model_instance.id
 			).created_at.advance(
 				self.offset_units.to_sym => self.offset
@@ -46,13 +45,13 @@ class Expiration < ActiveRecord::Base
 		self.last_sweep = now 
 
 		expirations.each do |expiration|
-			goal = expiration.owner()	# Owner could be a Tranzaction
-			if goal.is_a? Goal then
-				tranzaction = goal.tranzaction
+			goal = expiration.goal
+			unless goal.nil? then
 				goal.transaction do
 					if goal.can_expire? then
-						artifact = tranzaction.build_artifact_for(self)
+						artifact = expiration.tranzaction.create_artifact_for(expiration)
 						artifact.save!
+						goal.expire()
 					end
 				end
 			end

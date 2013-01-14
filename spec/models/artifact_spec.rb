@@ -1,38 +1,24 @@
 require 'spec_helper'
 
-module Contracts
-	module Test
-		class TestContract < Contract
-		end
-	end
-end
-
-class Contracts::Test::ArtifactTest < Artifact
-	A_CONSTANT = true
-	param_accessor :a, :b
-end
-
-class Contracts::Test::Friend < ActiveRecord::Base
-end
-
 describe ActiveRecord::Base do
 	it "should have a param_accessor class method" do
 		ActiveRecord::Base.should respond_to :param_accessor
 	end
 end
 
-describe Contracts::Test::ArtifactTest do
+describe Contracts::Test::TestArtifact do
 	before(:each) do
 		@trans = Contracts::Test::TestContract.create!
-		@af = ::Contracts::Test::ArtifactTest.new()
-		@af.tranzaction_id = @trans.id
-		@artifact = ::Contracts::Test::ArtifactTest.new()
+		@artifact = ::Contracts::Test::TestArtifact.new()
 		@artifact.tranzaction_id = @trans.id
-		@artifact.save!
 	end
 
 	it "should create a new instance given valid attributes" do
-		@af.save!
+		@artifact.save!
+	end
+
+	it "should respond to immutable" do
+		@artifact.should respond_to :immutable
 	end
 
 	it "should have accessors" do

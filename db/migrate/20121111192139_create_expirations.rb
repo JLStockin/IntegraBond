@@ -3,8 +3,8 @@ class CreateExpirations < ActiveRecord::Migration
 		create_table :expirations do |t|
 			t.string	:type
 
-			t.integer	:owner_id
-			t.string	:owner_type
+			t.integer	:tranzaction_id
+			t.integer	:goal_id
 
 			t.integer	:offset		# DateTime.advance(offset_units => value)
 			t.string	:offset_units

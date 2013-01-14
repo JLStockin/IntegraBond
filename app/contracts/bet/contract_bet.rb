@@ -9,6 +9,7 @@ module Contracts::Bet
 
 		# Stuff specific to this contract 
 		CONTRACT_NAME = "2 Party Bet"
+		SUMMARY = "Bet between two parties"
 		VERSION = "0.1"
 		TAGS = [:default, :bet, :wager]
 		CHILDREN = [:GoalTenderOffer]
@@ -88,8 +89,13 @@ module Contracts::Bet
 		def update_attributes(params)	
 
 			if params.has_key?(:contracts_bet_party1_bet) then
-				party1_bet.value = Money.parse(params[:contracts_bet_party1_bet][:value])
-				party1_bet.save!
+
+puts "+--+> updating party1_bet.value to #{params[:contracts_bet_party1_bet][:value]}"
+				p = party1_bet
+				p.value = Money.parse(params[:contracts_bet_party1_bet][:value])
+puts "+--+> party1_bet.value is now #{party1_bet.value}"
+				p.save!
+puts "+--+> party1_bet.value after save is #{party1_bet.value}"
 			end
 
 			if params.has_key?(:contracts_bet_party2_bet) then

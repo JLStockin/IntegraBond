@@ -73,34 +73,74 @@ Spork.prefork do
 		# Contract Helpers
 		#
 
+		def create_admin_user()
+			# Creating the EmailContact also constructs the Admin User 
+			FactoryGirl.create(:admin_email)
+			u = User.where{username == "admin@example.com"}.first
+			u.admin = true
+			u.save(validate: false)
+		end
+
+		def prepare_test_tranzaction()
+			user1 = FactoryGirl.create(:seller_user)
+			contact = FactoryGirl.build(:seller_email)
+			user1.contacts << contact
+
+			user2 = FactoryGirl.create(:buyer_user)
+			contact = FactoryGirl.build(:buyer_email)
+			user2.contacts << contact
+
+			klass = Contracts::Bet::ContractBet
+			tranz = Contract.create_tranzaction(klass, user1)
+			tranz
+		end
+
+		def update_test_tranzaction(tranz)
+			user1 = User.find_by_username(FactoryGirl.attributes_for(:seller_user)[:username]) 
+			params = {
+				:contracts_bet_party1_bet => {:value => Money.parse("33.00")},
+				:contracts_bet_party1_fees => {:value => Money.parse("0.99")},
+				:contracts_bet_party2_bet => {:value => Money.parse("33.00")},
+				:contracts_bet_party2_fees => {:value => Money.parse("0.99")},
+				:contracts_bet_terms_artifact => {:text => "yada yada"},
+				:contracts_bet_offer_expiration => {:offset => "2", :offset_units_index => "2"},
+				:contracts_bet_bet_expiration => {:offset =>"2", :offset_units_index => "2"},
+				tranz.party2.ugly_prefix => {
+					:contact_strategy => Contact::CONTACT_METHODS[2],
+					:find_type_index => "1",
+					:associate_id => user1.id 
+				}
+			}
+
+			tranz.update_attributes(params)
+			tranz.party2.update_attributes(params)
+			params
+		end
+
 		module Contracts
 			module Test; end
 		end
 	
 		class Contracts::Test::TestContract < Contract
 
+			assoc_accessor(:TestArtifact)
+
 			VERSION = "0.1"
-			CONTRACT_NAME = "Test Contract"
-			SUMMARY = "This is a test"
-			AUTHOR_EMAIL = "cschille@gmail.com" 
-	
-			FIRST_GOAL = :TestGoal
-	
-			DEFAULT_BOND = {:Party1 => Money.parse("$20"), :Party2 => Money.parse("$20")}
-	
+			VALUABLES = [:Valuable1, :Valuable2]
+			AUTHOR_EMAIL = "cschille@gmail.com"
 			TAGS = %W/test default/
+			EXPIRATIONS = [] 
+			CHILDREN = [:TestGoal] 
+			ARTIFACT = [] 
+			PARTY_ROSTER = [:Party1]
+			WIZARD_STEPS = []
+			CONTRACT_NAME = "Test Contract"
+			FORWARD_TRANSITIONS = []
+			REVERSE_TRANSITIONS = []
+			DEPENDENCIES = []
+			SUMMARY = "This is a test"
+	
 
-			# In real life, this calls a controller and/or looks at other Artifacts.
-
-			def request_provisioning(goal_id, artifact_klass, initial_params)
-				hash = {}
-				initial_params.each_key do |param|
-					hash[param] = "yes" unless param == :value or param == :expire
-				end
-				hash[:value] = Money.parse("$100")
-				hash[:expire] = initial_params[:expire] 
-				TestHelper.stash_return_values(goal_id, artifact_klass, hash)
-			end
 		end
 
 		class Contracts::Test::TestGoal < Goal
@@ -127,7 +167,7 @@ Spork.prefork do
 				party2.contract_id = self.contract_id
 				party2.save!
 	
-				valuable1 = IBContracts::Test::Valuable1.new( \
+				valuable1 = Contracts::Test::Valuable1.new( \
 					contract_id: self.contract_id,
 					value: TestHelper.the_hash[:value],
 					origin_id: party1.id, disposition_id: party1.id \
@@ -135,7 +175,7 @@ Spork.prefork do
 				valuable1.contract_id = self.contract_id
 				valuable1.save!
 	
-				valuable2 = IBContracts::Test::Valuable2.new( \
+				valuable2 = Contracts::Test::Valuable2.new( \
 					contract_id: self.contract_id,
 					value: TestHelper.the_hash[:value],
 					origin_id: party2.id, disposition_id: party2.id \
@@ -150,14 +190,11 @@ Spork.prefork do
 		
 		end
 	
-		class Contracts::Test::TestArtifact < Artifact 
+		class Contracts::Test::TestArtifact < ProvisionableArtifact 
 	
-			param_accessor :a, :b, :value_cents, :expire
-			monetize :value_cents
-		
-			attr_accessible :a, :b, :value, :expire
-		
-			PARAMS = { a: :no, b: :no, value: Money.parse("$25") }
+			A_CONSTANT = true
+			IMMUTABLE = false 
+			PARAMS = { a: :no, b: "hello", c: 12, value: Money.parse("$11") }
 		
 		end
 	
@@ -171,6 +208,8 @@ Spork.prefork do
 	
 		class Contracts::Test::Party2 < Party; end
 	
+		class Contracts::Test::Friend < ActiveRecord::Base; end
+
 		class TestHelper
 			class << self
 				attr_accessor :goal_id, :artifact_class, :the_hash
@@ -185,6 +224,8 @@ Spork.prefork do
 end
 
 Spork.each_run do
-
+	load "app/models/contract.rb"
+	load "app/models/expiration.rb"
+	load "spec/models/contract_spec.rb"
 
 end # Spork.each_run

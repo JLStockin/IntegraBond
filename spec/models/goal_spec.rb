@@ -1,11 +1,6 @@
 require 'spec_helper'
 require 'active_support/time'
 
-module Contracts
-module Test
-end
-end
-
 describe Goal do
 
 	before(:each) do

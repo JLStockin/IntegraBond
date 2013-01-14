@@ -48,13 +48,13 @@ ActiveRecord::Schema.define(:version => 20121114190401) do
 
   create_table "expirations", :force => true do |t|
     t.string   "type"
-    t.integer  "owner_id"
-    t.string   "owner_type"
+    t.integer  "tranzaction_id"
+    t.integer  "goal_id"
     t.integer  "offset"
     t.string   "offset_units"
     t.datetime "value"
-    t.datetime "created_at",   :null => false
-    t.datetime "updated_at",   :null => false
+    t.datetime "created_at",     :null => false
+    t.datetime "updated_at",     :null => false
   end
 
   add_index "expirations", ["value"], :name => "index_expirations_on_value"

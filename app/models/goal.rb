@@ -31,7 +31,7 @@ require 'squeel'
 
 #
 # Monkey-patch StateMachine to add 'inject_provisioning' and 'inject_expiration' methods
-# so that those two macros are available to the Goal class.  'inject_expiration' # adds
+# so that those two macros are available to the Goal class.  'inject_expiration' adds
 # the 'active?' and 'disable' methods.
 #
 StateMachine::Machine.class_eval do

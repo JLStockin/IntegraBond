@@ -22,7 +22,7 @@
 #					them to accept configuration parameters for Goals not yet in existence.
 #	Invitation -- Currently, an object linking a temporary Contact to a Party.  Users
 #					follow Invitations to assume a Party, and thus a role in a Tranzaction.
-#					Later, it may be subclassed for other purposes.
+#					Later, it may be subclassed for other purposes such as coupons.
 #	User
 #	Account -- a User's bank account (holding money).
 #	XAction -- a bank transaction that moves money around and creates a history.
@@ -58,14 +58,9 @@ class Contract < ActiveRecord::Base
 					dependent: :destroy, autosave: true
 	has_one		:originator, class_name: Party, foreign_key: :originator_id
 
-	has_many	:self_expirations, as: :owner, class_name: Expiration, dependent: :destroy
-	has_many	:goal_expirations, through: :goals, source: :expiration , as: :owner
+	has_many	:expirations, foreign_key: :tranzaction_id, dependent: :destroy
 
 	attr_accessible :originator
-
-	def expirations
-		self_expirations + goal_expirations
-	end
 
 	#
 	# Start the Tranzaction state_machine(s)
@@ -125,7 +120,8 @@ class Contract < ActiveRecord::Base
 		raise "#{subclass_sym} not found in class hierarchy"\
 			if hierarchy_depth == MAX_HIERARCHY_DEPTH
 
-		table_class.where{self.type == sub_class.to_s}.all
+		cmd = "self.#{table_class.to_s.pluralize.downcase}.where{self.type == #{sub_class}.to_s}"
+		self.instance_eval(cmd)
 	end
 
 	#
@@ -137,6 +133,9 @@ class Contract < ActiveRecord::Base
 		values[0]
 	end
 
+	#
+	# Assumes that instances are ordered in DB by creation time
+	#
 	def latest_model_instance(subclass_sym)
 		values = model_instances(subclass_sym)
 		values[-1]
@@ -170,16 +169,10 @@ class Contract < ActiveRecord::Base
 	def self.assoc_accessor(klass)
 		assoc_name = klass.to_s.underscore()
 		getter = "#{assoc_name}".to_sym
-		setter = "#{assoc_name}=".to_sym
-		var = "@#{assoc_name}".to_sym
 
 		define_method(getter) do
-			ret = instance_variable_get(var) || self.model_instance(klass)
-			ret.nil? ? self.namespaced_class(klass).new() : ret
-		end
-
-		define_method(setter) do |value|
-			instance_variable_set(var, value)
+			ret = self.model_instance(klass)
+#			ret.nil? ? self.namespaced_class(klass).new(tranzaction_id: self.id) : ret
 		end
 	end
 
@@ -298,7 +291,6 @@ class Contract < ActiveRecord::Base
 
 	#
 	# Create a new Tranzaction (Contract instance) 
-	# UNTESTED!
 	#
 	def self.create_tranzaction(contract_class, current_user)
 		tranz = contract_class.create!()
@@ -311,33 +303,34 @@ class Contract < ActiveRecord::Base
 
 	#
 	# UNTESTED!
-	# :type_provider can be a Goal instance or an Expiration 
+	# instance can be a Tranzaction, Goal, or Expiration
 	# 
-	def create_artifact_for(type_provider, params = nil)
+	def create_artifact_for(instance, params = nil)
 		goal = nil
 		artifact = nil
-		artifact_type = type_provider.class.artifact()
+		artifact_type = instance.class.artifact()
 
-		if type_provider.is_a?(Goal) then
-			goal = type_provider 
-		elsif type_provider.is_a?(Expiration)
-			goal = type_provider.goal 
-		elsif type_provider.is_a?(Contract)
-			goal = nil 
-		else
-			raise "bad type_provider"
-		end
-
+		goal = goal_for(instance)
 		unless artifact_type.nil? then
 			artifact_class = self.namespaced_class(artifact_type)
 			artifact = artifact_class.new()
 			artifact.mass_assign_params(params.nil? ? artifact_class.params : params)
 			self.artifacts << artifact
-			goal.artifact = artifact unless goal.nil?
+			artifact.goal = goal
 			artifact.save!
 		end
 		return artifact
 
+	end
+
+	def goal_for(o)
+		goal = nil
+		if o.is_a?(Goal) then
+			goal = o
+		elsif o.is_a?(Expiration)
+			goal = o.goal 
+		end
+		return goal
 	end
 
 	#
@@ -397,7 +390,7 @@ class Contract < ActiveRecord::Base
 			expiration.offset = params.nil? ? klass::DEFAULT_OFFSET : params[:offset]
 			expiration.offset_units = params.nil? \
 				? klass::DEFAULT_OFFSET_UNITS : params[:offset_units]
-			expiration.owner = self
+			expiration.tranzaction = self
 			expiration.save!
 		end
 	end
@@ -602,7 +595,7 @@ class Contract < ActiveRecord::Base
 
 	CONTRACT_CONSTANT_NAMES = [ \
 		'VERSION', 'VALUABLES', 'AUTHOR_EMAIL', 'TAGS', 'EXPIRATIONS',
-		'CHILDREN', 'ARTIFACT', 'PARTY_ROSTER', 'WIZARD_STEPS', 
+		'CHILDREN', 'ARTIFACT', 'PARTY_ROSTER', 'WIZARD_STEPS', 'SUMMARY',
 		'CONTRACT_NAME', 'FORWARD_TRANSITIONS', 'REVERSE_TRANSITIONS', 'DEPENDENCIES'\
 	]
 

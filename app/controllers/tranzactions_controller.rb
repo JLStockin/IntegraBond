@@ -9,7 +9,7 @@ class TranzactionsController < ApplicationController
 	CONTACT_METHODS = [
 		'Find ',
 		'Past associate ', 
-		'Allow anyone to accept (and genrate an invitation link)'
+		'Allow anyone to accept (and generate an invitation link)'
 	]
 
 	# GET /tranzactions
