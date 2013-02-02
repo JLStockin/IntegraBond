@@ -4,7 +4,8 @@ class CreateValuables < ActiveRecord::Migration
 			t.string	:type
 			t.integer	:tranzaction_id
 			t.string	:machine_state
-			t.integer	:value_cents
+			t.integer	:value_cents, :default => 0, :null => false
+			t.string	:currency, :null => false
 
 			t.integer	:origin_id
 			t.integer	:disposition_id

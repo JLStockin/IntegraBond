@@ -21,7 +21,6 @@ Spork.prefork do
 	Dir[Rails.root.join("spec/support/**/*.rb")].each {|f| require f}
 
 
-  # This code will be run each time you run your specs.
 	RSpec.configure do |config|
 
 		# ActiveRecord::Base.logger = Logger.new(STDOUT)
@@ -73,24 +72,31 @@ Spork.prefork do
 		# Contract Helpers
 		#
 
-		def create_admin_user()
-			# Creating the EmailContact also constructs the Admin User 
-			FactoryGirl.create(:admin_email)
-			u = User.where{username == "admin@example.com"}.first
-			u.admin = true
-			u.save(validate: false)
+		def create_user(factory_sym)
+			user = FactoryGirl.create(factory_sym)
+			user.account.deposit("$1000", "$0")
+			user.account.save!
+			user_prefix = factory_sym.to_s.split('_')[0] 
+			user.contacts << FactoryGirl.build("#{user_prefix}_email".to_sym)
+			user.contacts << FactoryGirl.build("#{user_prefix}_sms".to_sym)
+			user
 		end
 
-		def prepare_test_tranzaction()
-			user1 = FactoryGirl.create(:seller_user)
-			contact = FactoryGirl.build(:seller_email)
-			user1.contacts << contact
+		def create_admin_user()
+			factory_sym = :admin_user
+			user = create_user(factory_sym)
+			user.admin = true
+			user.save!
+			user_prefix = factory_sym.to_s.split('_')[0] 
+			user.contacts << FactoryGirl.build("#{user_prefix}_email".to_sym)
+			user
+		end
 
-			user2 = FactoryGirl.create(:buyer_user)
-			contact = FactoryGirl.build(:buyer_email)
-			user2.contacts << contact
+		def prepare_test_tranzaction(klass)
+			create_admin_user()
+			user1 = create_user(:seller_user)
+			user2 = create_user(:buyer_user)
 
-			klass = Contracts::Bet::ContractBet
 			tranz = Contract.create_tranzaction(klass, user1)
 			tranz
 		end
@@ -107,9 +113,10 @@ Spork.prefork do
 				:contracts_bet_bet_expiration => {:offset =>"2", :offset_units_index => "2"},
 				tranz.party2.ugly_prefix => {
 					:contact_strategy => Contact::CONTACT_METHODS[2],
-					:find_type_index => "1",
-					:associate_id => user1.id 
-				}
+					:find_type_index => "2",
+					:associate_id => user1.id.to_s
+				},
+				:contact => { :contact_data => "joe.blow@example.com" }
 			}
 
 			tranz.update_attributes(params)
@@ -117,22 +124,31 @@ Spork.prefork do
 			params
 		end
 
-		module Contracts
-			module Test; end
+		def resolve_party2(tranz)
+			user2 = User.find_by_username(FactoryGirl.attributes_for(:buyer_user)[:username]) 
+			party2 = tranz.model_instance(:Party2)
+			party2.contact = user2.contacts[0]
+			party2.save!
+			party2
 		end
-	
-		class Contracts::Test::TestContract < Contract
+
+		class Contracts::Bet::TestContract < Contract
 
 			assoc_accessor(:TestArtifact)
+			assoc_accessor(:PParty1)
+			assoc_accessor(:PParty2)
 
 			VERSION = "0.1"
 			VALUABLES = [:Valuable1, :Valuable2]
 			AUTHOR_EMAIL = "cschille@gmail.com"
 			TAGS = %W/test default/
-			EXPIRATIONS = [] 
+			EXPIRATIONS = [ \
+				:OfferExpiration,
+				:BetExpiration\
+			]
 			CHILDREN = [:TestGoal] 
-			ARTIFACT = [] 
-			PARTY_ROSTER = [:Party1]
+			ARTIFACT = nil 
+			PARTY_ROSTER = [:PParty1, :PParty2]
 			WIZARD_STEPS = []
 			CONTRACT_NAME = "Test Contract"
 			FORWARD_TRANSITIONS = []
@@ -143,54 +159,38 @@ Spork.prefork do
 
 		end
 
-		class Contracts::Test::TestGoal < Goal
+		class Contracts::Bet::TestGoal < Goal
 
-			EXPIRE = "DateTime.now.advance( seconds: 2 )"
-			CHRON_PERIOD_SECONDS = 10
-			CHILDREN = []
-	
-			state_machine :machine_state, initial: :s_initial do
-				inject_provisioning()
-				inject_expiration()
+			ARTIFACT = :OfferPresentedArtifact 
+			EXPIRATION = :TestExpiration
+			CHILDREN = [:GoalAcceptOffer, :GoalCancelOffer]
+			FAVORITE_CHILD = true
+			STEPCHILDREN = []
+			AVAILABLE_TO = [:PParty1]
+			DESCRIPTION = "Present offer"
+			SELF_PROVISION = false 
+
+			def execute(artifact)
+			end
+
+			def reverse_execution()
 			end
 	
-			def procreate(artifact, params)
-				user1 = User.find(3)
-				party1 = self.class.namespaced_const(:Party1).new
-				party1.user_id = user1.id
-				party1.contract_id = self.contract_id
-				party1.save!
-	
-				user2 = User.find(4)
-				party2 = self.class.namespaced_const(:Party2).new
-				party2.user_id = user2.id
-				party2.contract_id = self.contract_id
-				party2.save!
-	
-				valuable1 = Contracts::Test::Valuable1.new( \
-					contract_id: self.contract_id,
-					value: TestHelper.the_hash[:value],
-					origin_id: party1.id, disposition_id: party1.id \
-				)
-				valuable1.contract_id = self.contract_id
-				valuable1.save!
-	
-				valuable2 = Contracts::Test::Valuable2.new( \
-					contract_id: self.contract_id,
-					value: TestHelper.the_hash[:value],
-					origin_id: party2.id, disposition_id: party2.id \
-				)
-				valuable2.contract_id = self.contract_id
-				valuable2.save!
-	
-				super()
-	
-				true
+			def on_expire(artifact)
 			end
-		
 		end
-	
-		class Contracts::Test::TestArtifact < ProvisionableArtifact 
+
+		class Contracts::Bet::TestExpiration < Expiration
+			DEFAULT_OFFSET = 1 
+			DEFAULT_OFFSET_UNITS = :seconds
+			BASIS_TYPE = :TermsArtifact
+			ARTIFACT = :TestTimeoutArtifact
+		end
+
+		class Contracts::Bet::TestTimeoutArtifact < ExpiringArtifact
+		end
+
+		class Contracts::Bet::TestArtifact < ProvisionableArtifact 
 	
 			A_CONSTANT = true
 			IMMUTABLE = false 
@@ -198,34 +198,30 @@ Spork.prefork do
 		
 		end
 	
-		class Contracts::Test::Valuable1 < Valuable
-			attr_accessible :value
+		class Contracts::Bet::Valuable1 < Valuable
+			VALUE = Money.parse("$11")
+			OWNER = :PParty1
+			ASSET = false
 		end
 	
-		class Contracts::Test::Valuable2 < Valuable; end
+		class Contracts::Bet::Valuable2 < Valuable
+			VALUE = Money.parse("$11")
+			OWNER = :PParty2
+			ASSET = false
+		end
 	
-		class Contracts::Test::Party1 < Party; end
+		class Contracts::Bet::PParty1 < Party
+		end
 	
-		class Contracts::Test::Party2 < Party; end
+		class Contracts::Bet::PParty2 < Party
+		end
 	
-		class Contracts::Test::Friend < ActiveRecord::Base; end
-
-		class TestHelper
-			class << self
-				attr_accessor :goal_id, :artifact_class, :the_hash
-			end
-			def self.stash_return_values(goal_id, klass, hash)
-				self.goal_id = goal_id
-				self.artifact_class = klass
-				self.the_hash = hash
-			end
+		class Contracts::Bet::Friend < ActiveRecord::Base
 		end
 	end
 end
 
 Spork.each_run do
-	load "app/models/contract.rb"
-	load "app/models/expiration.rb"
-	load "spec/models/contract_spec.rb"
+  # This code will be run each time you run your specs.
 
 end # Spork.each_run

@@ -1,4 +1,3 @@
-#require 'state_machine'
 
 class Valuable < ActiveRecord::Base
 	extend Provisionable
@@ -60,11 +59,8 @@ class Valuable < ActiveRecord::Base
 			if valuable.class.asset?() then
 				true
 			else
-				xaction = Xaction.new(op: :reserve)
-				xaction.amount = valuable.value
-				xaction.hold = 0 
-				xaction.primary = valuable.origin.contact.user.account
-				xaction.save
+				account = valuable.origin.contact.user.account
+				account.reserve(valuable.value)
 			end
 		end
 
@@ -76,11 +72,8 @@ class Valuable < ActiveRecord::Base
 			if valuable.class.asset?() then
 				true
 			else
-				xaction = Xaction.new(op: :release)
-				xaction.amount = valuable.value
-				xaction.hold = 0 
-				xaction.primary = valuable.origin.contact.user.account
-				xaction.save
+				account = valuable.origin.contact.user.account
+				account.clear(valuable.value)
 			end
 		end
 
@@ -92,17 +85,13 @@ class Valuable < ActiveRecord::Base
 			if valuable.class.asset?() then
 				true
 			else
-				# valuable.hold contains an amount to be released before the transfer
-				xaction = Xaction.new(op: :transfer)
-				xaction.amount = valuable.value
-				xaction.hold = valuable.value
-				xaction.primary = valuable.origin.contact.user.account
-				xaction.beneficiary = valuable.disposition.contact.user.account
-				xaction.save
+				primary = valuable.origin.contact.user.account
+				beneficiary = valuable.disposition.contact.user.account
+				Account.transfer(valuable.value, primary, beneficiary, valuable.value)
 			end
 		end
 
-		# :dispute
+		# :dispute -- plaintiff is the Valuable's origin; defendant is Valuable's disposition
 		event :dispute do
 			transition :s_transferred => :s_reserved_4_dispute
 		end
@@ -110,16 +99,13 @@ class Valuable < ActiveRecord::Base
 			if valuable.class.asset?() then
 				true
 			else
-				xaction = Xaction.new(op: :reserve)
-				xaction.amount = valuable.value * 2
-				xaction.hold = 0 
-				xaction.primary = valuable.disposition.contact.user.account
-				xaction.save
+				account = valuable.disposition.contact.user.account
+				account.reserve(valuable.value)
 			end
 		end
 
-		# :adjudicate
-		event :adjudicate do |evnt|
+		# :adjudicate -- see above for meaning of plaintiff
+		event :adjudicate do
 			transition :s_reserved_4_dispute => :s_transferred
 		end
 		before_transition :s_reserved_4_dispute => :s_transferred do |valuable, transition|
@@ -129,23 +115,15 @@ class Valuable < ActiveRecord::Base
 				for_plaintiff = transition.args[0][:for_plaintif]
 				raise "event didn't specifiy for_plaintiff (true or false)" if for_plaintiff.nil?
 
-				xaction = nil
 				if for_plaintiff
-					xaction = Xaction.new(op: :transfer)
-					xaction.amount = valuable.value * 2
-					xaction.hold = valuable.value * 2
-					# now 2nd party's accnt
-					xaction.primary = valuable.disposition.contact.user.account
-					# now 1st party's accnt
-					xaction.beneficiary = valuable.origin.contact.user.account
+					primary = valuable.disposition.contact.user.account
+					beneficiary = valuable.origin.contact.user.account
+					Account.transfer(valuable.value, primary, beneficiary, valuable.value)
 				else
-					xaction = Xaction.new(op: :release)
-					xaction.amount = valuable.value * 2
-					xaction.hold = 0
-					# now 2nd party's accnt
-					xaction.primary = valuable.disposition.contact.user.account
+					primary = valuable.disposition.contact.user.account
+					beneficiary = nil
+					primary.clear(valuable.value)
 				end
-				xaction.save
 			end
 		end
 	end
@@ -167,6 +145,18 @@ class Valuable < ActiveRecord::Base
 		self::ASSET
 	end
 
+	def self.owner
+		self::OWNER
+	end
+
+	def self.value
+		self::VALUE
+	end
+
+	CONSTANT_LIST = [
+		'ASSET', 'OWNER', 'VALUE'
+	]
+
 	# PARAMS must be specified in subclass
 
 	#
@@ -175,6 +165,16 @@ class Valuable < ActiveRecord::Base
 
 	# Validations
 	def self.validate_initial_state(tranzaction)
+	end
+
+	def value 
+		Money.new(value_cents, currency)
+	end
+
+	def value=(value)
+		value = Money.parse(value) if value.instance_of?(String)
+		write_attribute(:value_cents, value.cents)
+		write_attribute(:currency, value.currency_as_string)
 	end
 
 end

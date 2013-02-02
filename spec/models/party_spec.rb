@@ -1,29 +1,17 @@
 require 'spec_helper'
 
-describe Contracts::Test::Party1 do
+describe "Party Basics" do
 
 	before(:each) do
-		@tranzaction = Contracts::Test::TestContract.create!()
-		@user = User.find(3); raise "no users" if @user.nil?
-		@contact = @user.contacts[0]
-		@contact2 = @user.contacts[1]
-		@unresolved_contact = Contact.create_contact(EmailContact, @contact.user.username) 
-		@unresolved_contact.save!
-		@party = Contracts::Test::Party1.new(@attr)
-		@party.tranzaction = @tranzaction
-		@party.contact = @contact
-		@attr = {
-			tranzaction_id: @tranzaction.id,
-			contact_id: @contact.id
-		}
-		@params = {
-			@party.ugly_prefix().to_sym() => {:find_type_index => "2"},
-			:contact => { :contact_data => "joeblow@example.com" }
-		}
+		@tranz = prepare_test_tranzaction(Contracts::Test::TestContract)
+		@party = @tranz.party1
+		@contact = @tranz.party1.contact
 	end
 
 	it "should create an instance given valid attributes" do
-		@party.save!
+		party = Contracts::Test::Party1.new()
+		party.tranzaction_id = @tranz.id
+		party.save!
 	end
 
 	it "should have a user identifier" do
@@ -31,37 +19,30 @@ describe Contracts::Test::Party1 do
 		@party.user_identifier.should be == @contact.user.username
 	end
 
-	describe "update contact" do
+	describe "update Contact" do
+		before(:each) do
+			@unresolved_contact = EmailContact.create!(contact_data: "joe_blow@example.com")
+		end
+
 		it "shouldn't update if we're using the same Contact" do
-			before = Contact.count
 			@party.update_contact(@contact).should be_nil
-			Contact.count.should be == before
 		end
 
-		it "should update if we're using a new Contact" do
-			before = Contact.count
-			@party.update_contact(@contact2).should be == @contact2
-			Contact.count.should be == before
-		end
-
-		it "should destroy the old Contact if it doesn't point at a User" do
-			before = Contact.count
-			id = @unresolved_contact.id
-			Contact.find(id).id.should be == id 
+		it "should update if we're using a different Contact" do
 			@party.update_contact(@unresolved_contact).should be == @unresolved_contact
-			Contact.count.should be == before
-			@party.update_contact(@contact2).should be == @contact2
-			Contact.count.should be == before - 1
-			expect {Contact.find(id)}.should raise_error
+		end
+
+		it "should destroy old Contact if it doesn't point at a User" do
+			@party.update_contact(@unresolved_contact)
+			lambda do
+				@party.update_contact(@contact)
+			end.should change(Contact, :count).by(-1)
 		end
 
 		it "should *not* destroy the old Contact if it points to a User" do
-			before = Contact.count
-			id = @contact2.id
-			Contact.find(id).id.should be == id 
-			@party.update_contact(@contact2).id.should be == @contact2.id
-			Contact.find(id).id.should be == id
-			Contact.count.should be == before
+			lambda do
+				@party.update_contact(@unresolved_contact)
+			end.should_not change(Contact, :count)
 		end
 	end
 		
@@ -69,6 +50,17 @@ describe Contracts::Test::Party1 do
 		@party.description.should be == "First Party"
 	end
 
+end
+
+describe "Party resolution" do
+
+	before(:each) do
+		@tranz = prepare_test_tranzaction(Contracts::Bet::ContractBet)
+		@params = update_test_tranzaction(@tranz)
+		@party = @tranz.party2
+		@contact = @tranz.party2.contact
+		@user = @tranz.party2.contact.user
+	end
 
 	describe "attribute accessors" do
 
@@ -107,7 +99,7 @@ describe Contracts::Test::Party1 do
 				@party.contact = @user.contacts[1]
 				result = @party.get_find_strategy(@params)
 				result[0].should be == :EmailContact
-				result[1].should be == "joeblow@example.com"
+				result[1].should be == "joe.blow@example.com"
 			end
 
 			it "should return nil if the type index was nil" do
@@ -140,6 +132,7 @@ describe Contracts::Test::Party1 do
 			end
 
 			describe "contact" do
+
 				it "should be user's own first contact if associate_id is nil" do
 					@party.contact_strategy = Contact::CONTACT_METHODS[2]
 					@params.merge(@party.ugly_prefix.to_sym => {associate_id: nil})
@@ -175,50 +168,52 @@ describe Contracts::Test::Party1 do
 			describe "when suffix requested" do
 				it "should display the right thing" do 
 					@party.contact = nil
-					@party.dba(true).should be == "Party1 (unresolved party)"
+					@party.dba(true).should be == "Party2 (unresolved party)"
 				end
 			end
 
 			describe "when suffix not requested" do
 				it "should display the right thing" do 
 					@party.contact = nil
-					@party.dba(false).should be == "Party1"
+					@party.dba(false).should be == "Party2"
 				end
 			end
 		end
 
-		describe "with Contact, but no user" do
+		describe "with Contact, no user," do
 
-			describe "when suffix requested" do
+			describe "suffix requested," do
 				it "should display the right thing" do 
-					@party.contact = FactoryGirl.build(:seller_email_contact)
+					@party.contact = FactoryGirl.build(:seller_email)
 					@party.contact.user = nil
 					@party.dba(true).should be == "seller@example.com (unresolved party)"
 				end
 			end
 
-			describe "when suffix not requested" do
+			describe "suffix not requested," do
 				it "should display the right thing" do 
-					@party.contact = FactoryGirl.build(:seller_email_contact)
+					@party.contact = FactoryGirl.build(:seller_email)
 					@party.contact.user = nil
 					@party.dba(false).should be == "seller@example.com"
 				end
 			end
 		end
 
-		describe "with Contact and user" do
+		describe "with Contact, User," do
 
-			describe "when suffix requested" do
+			before(:each) do
+				@party = resolve_party2(@tranz)
+			end
+
+			describe "suffix requested," do
 				it "should display the right thing" do 
-					@party.contact = FactoryGirl.build(:seller_email_contact)
-					@party.dba(true).should be == "Mr Seller (seller@example.com)"
+					@party.dba(true).should be == "Ms Buyer (buyer@example.com)"
 				end
 			end
 
-			describe "when suffix not requested" do
+			describe "suffix not requested," do
 				it "should display the right thing" do 
-					@party.contact = FactoryGirl.build(:seller_email_contact)
-					@party.dba(false).should be == "Mr Seller (seller@example.com)"
+					@party.dba(false).should be == "Ms Buyer"
 				end
 			end
 
@@ -228,7 +223,7 @@ describe Contracts::Test::Party1 do
 
 			describe "when suffix requested" do
 				it "should display the right thing" do 
-					@party.contact = FactoryGirl.build(:seller_email_contact)
+					@party.contact = FactoryGirl.build(:seller_email)
 					@party.invitation = FactoryGirl.build(:party2_invite)
 					@party.dba(true).should be == "seller@example.com (invited to IntegraBond)"
 				end
@@ -236,7 +231,7 @@ describe Contracts::Test::Party1 do
 
 			describe "when suffix not requested" do
 				it "should display the right thing" do 
-					@party.contact = FactoryGirl.build(:seller_email_contact)
+					@party.contact = FactoryGirl.build(:seller_email)
 					@party.invitation = FactoryGirl.build(:party2_invite)
 					@party.dba(false).should be == "seller@example.com"
 				end

@@ -22,14 +22,14 @@ class User < ActiveRecord::Base
 
 	validates :password,	:presence			=> 	true,
 							:confirmation 		=> true,
-							:length				=> { :within => 5..40 }
+							:length				=> { :within => 6..40 }
 
 	validates_associated	:contacts,
 							:unless => lambda { self.new_record? },
 							:message => "User has no contacts"
 
 	before_validation		:update_username
-	before_save				:encrypt_password, :monetize
+	before_save				:encrypt_password, :monetize_account
 
 	# Return true if the user's passsword matches the submitted password.
 	def has_password?(submitted_password)
@@ -157,12 +157,11 @@ class User < ActiveRecord::Base
 		end
 
 		# Initialize a new user's account
-		def monetize(name = "default")
+		def monetize_account(name = "default")
 			if (account.nil?) then
 				account = self.build_account(name: name)
-				account.funds = 0
-				account.hold_funds = 0
-				account.funds_currency = "USD"
+				account.funds = MZERO 
+				account.hold_funds = MZERO 
 			end
 		end
 

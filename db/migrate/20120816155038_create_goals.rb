@@ -3,7 +3,7 @@ class CreateGoals < ActiveRecord::Migration
 		create_table :goals do |t|
 			t.string	:type
 			t.integer	:tranzaction_id
-			t.string	:machine_state
+			t.string	:state
 			t.text		:_ar_data
 
 			t.timestamps

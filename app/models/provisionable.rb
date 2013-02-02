@@ -9,13 +9,8 @@ module Provisionable
 		(self.valid_constant?(:PARAMS) and !self::PARAMS.nil?) ? self::PARAMS : nil
 	end
 
-	def inherited(subclass)
-		super
-		after_inherited do
-			subclass.instance_eval do
-				param_accessor	*self.params.keys unless self.params.nil?
-			end
-		end
+	def provisionable?
+		params().nil? ? false : true
 	end
 
 	#
@@ -43,8 +38,13 @@ module Provisionable
 		)
 	end
 
-	def provisionable?
-		params().nil? ? false : true
+	def inherited(subclass)
+		super
+		after_inherited do
+			subclass.instance_eval do
+				param_accessor	*self.params.keys unless self.params.nil?
+			end
+		end
 	end
 
 	def valid_artifact?(base_klass)

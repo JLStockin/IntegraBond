@@ -31,7 +31,7 @@ class PartiesController < ApplicationController
 
 			# Find
 			contact = @party.contact
-			matches = Contact.get_contacts(
+			matches = Contact.matching_contacts(
 				contact.class,
 				contact.contact_data
 			)

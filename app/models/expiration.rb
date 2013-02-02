@@ -23,7 +23,7 @@ class Expiration < ActiveRecord::Base
 	class << self 
 		attr_accessor :last_sweep
 	end
-	last_sweep = 0
+	self.last_sweep = DateTime.now 
 
 	before_create ExpirationCallbackHook
 
@@ -31,7 +31,7 @@ class Expiration < ActiveRecord::Base
 		self.goal = goal
 		model_instance = self.tranzaction.model_instance(self.class.basis_type)
 		self.value =
-			self.goal.namespaced_class(self.class.basis_type).constantize.find(
+			self.tranzaction.table_class(self.class.basis_type).find(
 				model_instance.id
 			).created_at.advance(
 				self.offset_units.to_sym => self.offset
@@ -41,33 +41,41 @@ class Expiration < ActiveRecord::Base
 
 	def self.sweep()
 		now = DateTime.now()
-		expirations = Expiration.expiring(self.last_sweep).can_expire
+		expirations = Expiration.expiring.can_expire
 		self.last_sweep = now 
 
 		expirations.each do |expiration|
 			goal = expiration.goal
 			unless goal.nil? then
-				goal.transaction do
-					if goal.can_expire? then
+				if goal.can_expire? then
+					goal.transaction do
 						artifact = expiration.tranzaction.create_artifact_for(expiration)
 						artifact.save!
-						goal.expire()
+						goal.expire(artifact)
 					end
 				end
 			end
 		end
 	end
 
-    scope :can_expire, joins{goals.inner}.where{
-		(machine_state == "s_provisioning") | (machine_state == "s_initial")
+    scope :can_expire, joins{goal.inner}.where{
+		(goal.state == "s_provisioning") | (goal.state == "s_initial")
 	}
 
-	scope :expiring, lambda { |last_sweep| \
-		where{value != nil & value <= DateTime.now & value > last_sweep}
+	scope :expiring, lambda { 
+		where{
+			(expirations.value >= Expiration.last_sweep) &\
+			(expirations.value <= DateTime.now) &\
+			(expirations.value != nil)
+		}
 	}
 
 	def self.basis_type
 		self::BASIS_TYPE
+	end
+
+	def self.artifact
+		self::ARTIFACT
 	end
 
 	#

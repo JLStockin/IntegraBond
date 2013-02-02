@@ -14,28 +14,25 @@ module Contracts::Bet
 		TAGS = [:default, :bet, :wager]
 		CHILDREN = [:GoalTenderOffer]
 		ARTIFACT = :TermsArtifact
-		EXPIRATIONS = [ \
-			:OtherPartyNotFoundExpiration,
+		EXPIRATIONS = [
 			:OfferExpiration,
-			:BetExpiration\
+			:BetExpiration
 		]
 		AUTHOR_EMAIL = "cschille@IntegraBond.com"
 		PARTY_ROSTER = [:Party1, :Party2]
-		VALUABLES = [ \
+		VALUABLES = [
 			:Party1Bet,
 			:Party2Bet,
 			:Party1Fees,
-			:Party2Fees\
+			:Party2Fees
 		]
 
 		# Helpers
 		assoc_accessor(:Party1)
 		assoc_accessor(:Party2)
-		assoc_accessor(:AdminParty)
 		assoc_accessor(:TermsArtifact)
 		assoc_accessor(:OfferExpiration)
 		assoc_accessor(:BetExpiration)
-		assoc_accessor(:OtherPartyNotFoundExpiration)
 		assoc_accessor(:Party1Bet)
 		assoc_accessor(:Party2Bet)
 		assoc_accessor(:Party1Fees)
@@ -45,7 +42,8 @@ module Contracts::Bet
 		# Setup state_machine for collecting data from tranzaction initiator
 		#
 
-		WIZARD_STEPS = [:terms, { :party2 => :party_locater }, :confirm, :tendered]
+		#WIZARD_STEPS = [:terms, { :party2 => :party_locater }, :confirm, :tendered]
+		WIZARD_STEPS = [:terms, :party2, :confirm, :tendered]
 
 		# Note that there isn't a transition between :party2 and :confirm  --
 		# This is handled by the parties_controller
@@ -90,12 +88,9 @@ module Contracts::Bet
 
 			if params.has_key?(:contracts_bet_party1_bet) then
 
-puts "+--+> updating party1_bet.value to #{params[:contracts_bet_party1_bet][:value]}"
 				p = party1_bet
 				p.value = Money.parse(params[:contracts_bet_party1_bet][:value])
-puts "+--+> party1_bet.value is now #{party1_bet.value}"
 				p.save!
-puts "+--+> party1_bet.value after save is #{party1_bet.value}"
 			end
 
 			if params.has_key?(:contracts_bet_party2_bet) then

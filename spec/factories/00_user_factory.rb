@@ -65,7 +65,7 @@ FactoryGirl.define do
 	factory :account, class: Account do |account|
 		funds_cents			0
 		hold_funds_cents	0
-		funds_currency		"USD"
+		currency			"USD"
 
 		factory :admin_account do |account|
 			account.name "admin"
@@ -110,7 +110,10 @@ FactoryGirl.define do
 
 	factory :admin_email, class: EmailContact do |contact|
 		contact.contact_data		ADMIN_EMAIL	
-		association :user,			factory: :admin_user
+	end
+
+	factory :admin_sms, class: SMSContact do |contact|
+		contact.contact_data		"4085550069"
 	end
 
 	######################################################################

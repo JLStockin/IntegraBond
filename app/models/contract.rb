@@ -65,7 +65,7 @@ class Contract < ActiveRecord::Base
 	#
 	# Start the Tranzaction state_machine(s)
 	#
-	def start()
+	def start(start_goals = true)
 		seed_tranzaction()
 
 		self.class.children().each do |goal_klass_sym|
@@ -73,7 +73,8 @@ class Contract < ActiveRecord::Base
 			goal = self.namespaced_class(goal_klass_sym).new() if goal.nil?
 			self.goals << goal
 			goal.save!
-			goal.start(false, true)	# Don't provision, do expire  
+
+			goal.start() if start_goals # (For debugging.)
 		end
 	end
 
@@ -93,6 +94,10 @@ class Contract < ActiveRecord::Base
 
 	end
 
+	def admin_party()
+		self.parties.where{self.type == "AdminParty"}.first
+	end
+
 	########################################################################################
 	#
 	# Basic class-based instance access methods.  Unlike the class-level methods,
@@ -102,24 +107,11 @@ class Contract < ActiveRecord::Base
 	# (the Tranzaction).  Notice that we have to wend our way through the class
 	# hierarchy to find the basic model class.
 	#
-	MODELS = [\
-		Party, Artifact, Valuable, Contact, Contract,
-		Account, Goal, User, Expiration, Xaction, Invitation\
-	]
-	MAX_HIERARCHY_DEPTH = 5
-
 	def model_instances(subclass_sym)
+		raise "model_instances called for nil symbol" if subclass_sym.nil?
+
+		table_class = table_class(subclass_sym)
 		sub_class = self.namespaced_class(subclass_sym)
-		table_class = sub_class.superclass()
-		hierarchy_depth = 0
-		while !MODELS.include?(table_class) and hierarchy_depth < MAX_HIERARCHY_DEPTH do
-			table_class = table_class.superclass
-			hierarchy_depth += 1
-		end
-
-		raise "#{subclass_sym} not found in class hierarchy"\
-			if hierarchy_depth == MAX_HIERARCHY_DEPTH
-
 		cmd = "self.#{table_class.to_s.pluralize.downcase}.where{self.type == #{sub_class}.to_s}"
 		self.instance_eval(cmd)
 	end
@@ -139,6 +131,30 @@ class Contract < ActiveRecord::Base
 	def latest_model_instance(subclass_sym)
 		values = model_instances(subclass_sym)
 		values[-1]
+	end
+
+	#
+	# Given a symbol representing an ActiveRecord subclass, walk up a subclass
+	# hierarchy until we hit a recognized model class; return that class
+	#
+	MAX_HIERARCHY_DEPTH = 5
+	TABLE_MODELS = [
+		Party, Artifact, Valuable, Contact, Contract,
+		Account, Goal, User, Expiration, Xaction, Invitation
+	]
+
+	def table_class(subclass_sym)
+		sub_class = self.namespaced_class(subclass_sym)
+		table_class = sub_class.superclass()
+		hierarchy_depth = 0
+		while !TABLE_MODELS.include?(table_class) and hierarchy_depth < MAX_HIERARCHY_DEPTH do
+			table_class = table_class.superclass
+			hierarchy_depth += 1
+		end
+
+		raise "#{subclass_sym} not found in class hierarchy"\
+			if hierarchy_depth == MAX_HIERARCHY_DEPTH
+		table_class
 	end
 
 	########################################################################################
@@ -166,14 +182,21 @@ class Contract < ActiveRecord::Base
 	#		...
 	#		party1.contact = EmailContact.new(tranzaction_id: tranzaction.id, ...)
 	#
+
 	def self.assoc_accessor(klass)
 		assoc_name = klass.to_s.underscore()
 		getter = "#{assoc_name}".to_sym
+		var = "@#{assoc_name}".to_sym
 
 		define_method(getter) do
-			ret = self.model_instance(klass)
-#			ret.nil? ? self.namespaced_class(klass).new(tranzaction_id: self.id) : ret
+			ret = instance_variable_get(var)
+			if (ret.nil?) then
+				ret = self.model_instance(klass)
+				ret = self.instance_variable_set(var, ret) unless ret.nil?
+			end
+			return ret 
 		end
+
 	end
 
 	#
@@ -233,7 +256,6 @@ class Contract < ActiveRecord::Base
 	
 	def active?
 		self.machine_state == :completed? ? true : false
-		# active_goals(:all).nil? ? false : true
 	end
 
 	#
@@ -260,7 +282,6 @@ class Contract < ActiveRecord::Base
 	end
 
 	#
-	# UNTESTED!
 	# For a given user, return the list of tranzactions involving them
 	#
 	def self.tranzactions_for(usr)
@@ -314,10 +335,17 @@ class Contract < ActiveRecord::Base
 		unless artifact_type.nil? then
 			artifact_class = self.namespaced_class(artifact_type)
 			artifact = artifact_class.new()
-			artifact.mass_assign_params(params.nil? ? artifact_class.params : params)
-			self.artifacts << artifact
+			artifact.mass_assign_params(params) unless params.nil?
 			artifact.goal = goal
-			artifact.save!
+			self.artifacts << artifact # implicit save
+
+			unless goal.nil?
+				if ( artifact.is_a?(ExpiringArtifact) ) then
+					goal.expire!(artifact)
+				elsif ( artifact.is_a?(ProvisionableArtifact) )
+					goal.provision!(artifact)
+				end
+			end
 		end
 		return artifact
 
@@ -334,8 +362,8 @@ class Contract < ActiveRecord::Base
 	end
 
 	#
-	# UNTESTED!
-	# 
+	# Create a Tranzaction's Part[ies]
+	#
 	def create_parties(current_user)
 		self.class.party_roster.each_with_index do |party_sym, idx|
 			party = self.namespaced_class(party_sym).new()
@@ -349,14 +377,13 @@ class Contract < ActiveRecord::Base
 				party.contact = contact
 				party.contact_strategy = Contact::CONTACT_METHODS[0]
 			end
-			self.parties << party 
+			self.parties << party	# implicit party.save()
 		end
 		return self.parties 
 	end
 
 	#
 	# Create a Tranzaction's Valuables
-	# UNTESTED!
 	#
 	def create_valuables(params = nil)
 		self.class.valuables.each do |valuable_sym|
@@ -364,15 +391,18 @@ class Contract < ActiveRecord::Base
 			valuable = klass.new 
 			valuable.tranzaction = self
 			if (params.nil?) then
-				valuable.value = klass::VALUE 
+				valuable.value = klass.value
 			else
 				valuable.value = params[index][:value]
 				stripped_params = params[index].remove(:value)
 				valuable.mass_assign_params(stripped_params)
 			end
-			owner = klass::OWNER
-			valuable.origin = self.model_instance(owner)
-			valuable.disposition = valuable.origin
+			party = self.model_instance(klass.owner)
+			if party.nil? then
+				raise "missing model instance '#{klass.owner}'" if party.nil?
+			end
+			valuable.origin = party
+			valuable.disposition = party 
 			self.valuables << valuable
 			valuable.save!
 		end
@@ -381,7 +411,6 @@ class Contract < ActiveRecord::Base
 
 	#
 	# Create a Tranzaction's Expirations
-	# UNTESTED!
 	#
 	def create_expirations(params = nil)
 		self.class.expirations.each_with_index do |sym, index|
@@ -419,12 +448,12 @@ class Contract < ActiveRecord::Base
 	# provision().
 	#
 	def request_provision(goal)
+		return if goal.class.artifact().nil?
 		goal.class.available_to().each do |party_sym|
 			party_class = self.namespaced_class(party_sym)	
 			party = self.model_instance(party_sym)
 			Rails.logger.info("server push: party = #{party.inspect}, goal = #{goal.inspect}")
-			server_push( party, self.artifact_path_for(goal) ) \
-				unless goal.artifact().nil? or party.nil? or provision == false
+			server_push( party, artifact_path_for(goal) ) unless party.nil?
 		end
 	end
 
@@ -551,49 +580,21 @@ class Contract < ActiveRecord::Base
 	# Constants below must be defined in the Contract (subclass of Contract)
 	#
 	def self.valid_contract?()
-		# Add validations for newly authored Contracts below
-		self.check_contract_constants()
-	end
-
-	def self.check_contract_constants()
 		raise "contract_constants_defined?() called on Contract itself!" \
 			if self.class == Contract
 
-		bad_constant = ""
-		begin	
-			CONTRACT_CONSTANT_NAMES.each do |constant_name|
-				bad_constant = constant_name
-				self.const_get(constant_name)
-			end
-			return true
-		rescue NameError => error 
-			raise "#{self.class.to_s}: undefined constant #{bad_constant}"
-		end
-		raise "invalid Offer class specified (or none)" unless self.offer.kind_of? Artifact
-	end
-
-	def self.verify_constants(constant_list)
-		bad_constant = ""
-		begin	
-			constant_list.each do |constant_name|
-				bad_constant = constant_name
-				self.const_get(constant_name)
-			end
-			return true
-		rescue NameError
-			raise "#{self.class.to_s}: undefined constant #{bad_constant}"
-		end
+		# Add validations for newly authored Contracts below
+		self.verify_constants()
 	end
 
 	#
-	# This is a means to verify protected methods during testing
 	# TODO: add more tests...
 	#
 	def valid_contract?()
-		(self.house.kind_of?(Party)) ? true : false
+		((self.house.kind_of?(Party)) ? true : false) and self.class.valid_contract?
 	end
 
-	CONTRACT_CONSTANT_NAMES = [ \
+	CONSTANT_LIST = [ \
 		'VERSION', 'VALUABLES', 'AUTHOR_EMAIL', 'TAGS', 'EXPIRATIONS',
 		'CHILDREN', 'ARTIFACT', 'PARTY_ROSTER', 'WIZARD_STEPS', 'SUMMARY',
 		'CONTRACT_NAME', 'FORWARD_TRANSITIONS', 'REVERSE_TRANSITIONS', 'DEPENDENCIES'\

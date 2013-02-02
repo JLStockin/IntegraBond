@@ -31,6 +31,7 @@ end
 
 group :development do
   gem 'sqlite3'
+#	gem 'mysql2', '0.2.6'
   gem 'annotate'
   gem 'faker', '0.3.1'
   gem 'spork-rails'
@@ -38,6 +39,7 @@ end
 
 group :test do
   gem 'sqlite3'
+#	gem 'mysql2', '0.2.6'
   gem 'webrat'
   gem 'factory_girl_rails', :require => false
   gem 'spork-rails'

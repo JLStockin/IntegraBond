@@ -13,37 +13,41 @@ module Contracts::Bet
 	class GoalTenderOffer < Goal
 
 		ARTIFACT = :OfferPresentedArtifact 
+		EXPIRATION = nil 
 		CHILDREN = [:GoalAcceptOffer, :GoalCancelOffer]
 		FAVORITE_CHILD = true
 		STEPCHILDREN = []
 		AVAILABLE_TO = [:Party1]
-		EXPIRATION = :OtherPartyNotFoundExpiration
 		DESCRIPTION = "Present offer"
+		SELF_PROVISION = true 
 
 		def execute(artifact)
-			self.tranzaction.party1_bet.disposition = self.tranzaction.party1
-			self.tranzaction.party1_bet.reserve()
-			self.tranzaction.party1_fees.disposition = self.tranzaction.house()
-			self.tranzaction.party1_fees.reserve()
+			p1_bet = self.tranzaction.party1_bet
+			p1_bet.disposition = self.tranzaction.party1
+			p1_bet.save!
+			p1_bet.reserve()
 
-			self.tranzaction.party2_bet.value = self.tranzaction.party1_bet.value 
-			self.tranzaction.party2_bet.save!
-			self.tranzaction.party2_fees.value = self.tranzaction.party1_fees.value 
-			self.tranzaction.party2_fees.save!
-
+			p1_fees = self.tranzaction.party1_fees 
+			p1_fees.disposition = self.tranzaction.house()
+			p1_fees.reserve()
 		end
 
 		def reverse_execution()
-			self.tranzaction.party1_bet.disposition = party1
-			self.tranzaction.party1_bet.release
-			self.tranzaction.party1_fees.disposition = party1
-			self.tranzaction.party1_fees.release
+			p1_bet = self.tranzaction.party1_bet
+			p1_bet.release
+			p1_bet.disposition = self.tranzaction.party1
+			p1_bet.save!
+
+			p1_fees = self.tranzaction.party1_fees
+			p1_fees.release
+			p1_fees.disposition = self.tranzaction.party1
+			p1_fees.save!
 		end
 
 		def on_expire(artifact)
-			msg = "Offer creation timed out (or the other party couldn't be located or didn't respond)." 
+			msg = "Offer creation timed out (or the other party couldn't be located "\
+				+ "or didn't respond)." 
 			self.tranzaction.flash_party(self.tranzaction.party1, msg)
-			self.tranzaction.flash_party(self.tranzaction.party2, msg)
 			true
 		end
 	end
@@ -62,27 +66,19 @@ module Contracts::Bet
 		IMMUTABLE = true
 	end
 
-	class OtherPartyNotFoundExpiration < Expiration
-		DEFAULT_OFFSET = 30
-		DEFAULT_OFFSET_UNITS = :seconds
-		BASIS_TYPE = :OfferAcceptedArtifact
-		ARTIFACT = :OtherPartyNotFoundArtifact
-	end
-
-	class OtherPartyNotFoundArtifact < ExpiringArtifact
-	end
-
 	#
 	# GoalCancelOffer
 	#
 	#
 	class GoalCancelOffer < Goal
 		ARTIFACT = :OfferWithdrawnArtifact 
+		EXPIRATION = nil
 		CHILDREN = nil
 		FAVORITE_CHILD = false
 		STEP_CHILDREN = nil 
 		AVAILABLE_TO = [:Party1]
 		DESCRIPTION = "Withdraw offer to bet"
+		SELF_PROVISION = false
 
 		def execute(artifact)
 			self.cancel_tranzaction()
@@ -174,11 +170,13 @@ module Contracts::Bet
 	class GoalRejectOffer < Goal
 
 		ARTIFACT = :OfferRejectedArtifact 
+		EXPIRATION = nil
 		CHILDREN = []
 		FAVORITE_CHILD = false 
 		STEPCHILDREN = [:GoalAcceptOffer, :GoalCancelOffer]
 		AVAILABLE_TO = [:Party2]
 		DESCRIPTION = "Reject offer"
+		SELF_PROVISION = false
 
 		def provision_needed?()
 			return true
@@ -228,7 +226,7 @@ module Contracts::Bet
 	# must agree, or the Tranzaction continues as usual.
 	#
 	#########################################################################
-	class GoalMutualCancellationArtifact < Goal
+	class GoalMutualCancellation < Goal
 
 		ARTIFACT = :MutualCancellationArtifact
 		EXPIRATION = nil 
@@ -237,6 +235,7 @@ module Contracts::Bet
 		STEPCHILDREN = [:GoalDeclareWinner]
 		AVAILABLE_TO = [:Party1, :Party2]
 		DESCRIPTION = "Cancel (with other party's approval)"
+		SELF_PROVISION = false
 
 		def execute()
 			
@@ -322,7 +321,7 @@ module Contracts::Bet
 		EXPIRATION = :BetExpiration
 		CHILDREN = []	# TODO add a GoalDispute, and implement reverse_execution
 		FAVORITE_CHILD = true
-		STEPCHILDREN = [:GoalMutualCancellationArtifact]
+		STEPCHILDREN = [:GoalMutualCancellation]
 		AVAILABLE_TO = [:Party1, :Party2]
 		DESCRIPTION = "Indicate the Winner"
 

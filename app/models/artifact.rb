@@ -3,11 +3,12 @@
 #
 
 class ArtifactCallbackHook
-	def self.after_commit(record)
-		if (record.is_a?(ExpiringArtifact)) then
-			record.goal.expire(record)
-		elsif ( record.is_a?(ProvisionableArtifact) and !record.goal.nil? )
-			record.goal.provision(record)
+	def self.after_initialize(record)
+		if record.class.provisionable? then
+			record.write_attribute(:_ar_data, {}) if record.read_attribute(:_ar_data).nil?
+			record.class.params.each_pair do |param, value|
+				record._ar_data[param] = value unless record._ar_data.has_key? param
+			end
 		end
 	end
 end
@@ -18,9 +19,9 @@ class Artifact < ActiveRecord::Base
 
 	belongs_to	:tranzaction, class_name: Contract, foreign_key: :tranzaction_id
 	belongs_to	:goal
-	validates	:tranzaction, presence: true
+	validates	:tranzaction, presence: true unless Rails.env.test?
 
-	after_commit ArtifactCallbackHook
+	after_initialize ArtifactCallbackHook
 
 	def <=>(other)
 		return 1 if other.created_at < self.created_at
@@ -28,9 +29,13 @@ class Artifact < ActiveRecord::Base
 		return 0 if other.created_at == self.created_at
 	end
 
-	def immutable
+	def self.immutable?
 		self::IMMUTABLE
 	end
+
+	CONSTANT_LIST = [
+		'IMMUTABLE'
+	]
 
 end
 
@@ -43,5 +48,7 @@ class ProvisionableArtifact < Artifact
 end
 
 class ExpiringArtifact < Artifact 
-
+	def self.provisionable?()
+		false
+	end
 end

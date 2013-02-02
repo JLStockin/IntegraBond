@@ -38,17 +38,15 @@ StateMachine::Machine.class_eval do
 
 	def inject_provisioning()
 
-		# -> start(provision, expiration)
-		event :start do
+		# -> _start()
+		event :_start do
 			transition :s_initial => :s_provisioning 
 			transition :s_cancelled => :s_provisioning
 		end
 		before_transition [:s_initial, :s_cancelled] => :s_provisioning do |goal, transition|
-			provision = transition.args[0]
-			expiration = transition.args[1]
-			goal.tranzaction.request_provision(goal) if provision
-			goal.tranzaction.request_expiration(goal) if expiration 
-			true 
+			goal.tranzaction.request_provision(goal) unless goal.class.artifact.nil?
+			goal.tranzaction.request_expiration(goal) unless goal.class.expiration.nil?
+			true
 		end
 
 		# -> provision(artifact)
@@ -99,11 +97,10 @@ StateMachine::Machine.class_eval do
 		end
 
 		before_transition :s_provisioning => :s_expired do |goal, transition|
-
 			artifact = transition.args[0]
-			if (!artifact.nil? and artifact.is_a?(goal.namespaced_class(artifact.class))) then
+			if !artifact.nil? then
 				goal.on_expire(artifact)
-				return true
+				true
 			else
 				false
 			end
@@ -116,7 +113,7 @@ end
 class Goal < ActiveRecord::Base
 	belongs_to :tranzaction, class_name: Contract, foreign_key: :tranzaction_id
 	has_one		:artifact
-	has_one		:expiration, as: :owner
+	has_one		:expiration
 
 	attr_accessible :tranzaction
 
@@ -148,6 +145,10 @@ class Goal < ActiveRecord::Base
 		self::AVAILABLE_TO
 	end
 
+	def self.self_provision?
+		self::SELF_PROVISION
+	end
+
 	class GoalInitializer
 		def self.before_create(record)
 
@@ -163,13 +164,24 @@ class Goal < ActiveRecord::Base
 
 	def self.valid_goal?
 		constants = [ :ARTIFACT, :CHILDREN, :STEP_CHILDREN,
-			:AVAILABLE_TO, :FAVORITE_CHILD, :EXPIRATION \
+			:AVAILABLE_TO, :FAVORITE_CHILD, :EXPIRATION,
+			:SELF_PROVISION
 		]
 		valid = true
 		constants.each do |constant|
 			valid = valid and valid_constant? constant
 		end
 		valid
+	end
+
+	#
+	# request provisioning, request expiration, and if so requested, self-provision
+	#
+	def start()
+		_start()
+		if self.class.expiration.nil? and self.class.self_provision? then
+			self.tranzaction.create_artifact_for(self)
+		end
 	end
 
 	def procreate()
@@ -181,7 +193,7 @@ class Goal < ActiveRecord::Base
 				goal.tranzaction_id = self.tranzaction_id
 				goal.save!
 			end
-			goal.start(true, true)
+			goal.start()
 		end
 	end
 
@@ -193,8 +205,8 @@ class Goal < ActiveRecord::Base
 		end
 	end
 
-	def active?(update=true)
-		return (self.can_provision? or self.can_start? or self.can_undo?)
+	def active?()
+		return (self.can_provision? or self.can_expire?)
 	end
 
 	#
@@ -222,13 +234,14 @@ class Goal < ActiveRecord::Base
 		raise "subclass must implement reverse_execution()"
 	end
 
-	# Called on a chron event if Goal actually expires
+	# Called on a expire event if Goal actually expires
 	def on_expire(artifact)
 		raise "subclass must implement expire()"
 	end
 
-	state_machine :machine_state, :initial => :s_initial do
+	state_machine :initial => :s_initial do
 		inject_provisioning
+		inject_disable
 		inject_undo
 		inject_expiration
 	end

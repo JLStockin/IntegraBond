@@ -28,15 +28,16 @@ ActiveRecord::Base.instance_eval do
 				params = self.class._symbolize_and_validate_params(params)
 				return nil if params.nil?
 
-				self._ar_data ||= Hash.new 
-				self._ar_data.merge!(params)
+				write_attribute(:_ar_data, {}) if self.read_attribute(:_ar_data).nil?
+				data = read_attribute(:_ar_data)
+				data.merge!(params)
+				write_attribute(:_ar_data, data)
 			end
 
 			def mass_fetch_params()
-				self._ar_data ||= {}
-				self._ar_data.class == Hash \
-					? self._ar_data \
-					: YAML::load(self._ar_data)
+				write_attribute(:_ar_data, {}) if self.read_attribute(:_ar_data).nil?
+				data = read_attribute(:_ar_data)
+				data.is_a?(Hash) ? data : YAML::load(read_attribute(:_ar_data))
 			end
 
 		end
@@ -56,15 +57,17 @@ ActiveRecord::Base.instance_eval do
 		accessors.each do |accessor|
 
 			define_method(accessor) do
-				self._ar_data ||= {}
-				self._ar_data.class == Hash \
-					? self._ar_data[accessor] \
-					: (YAML::load(self._ar_data))[accessor]
+				write_attribute(:_ar_data, {}) if self.read_attribute(:_ar_data).nil?
+				data = read_attribute(:_ar_data)
+				data.is_a?(Hash) \
+					? data[accessor]\
+					: (YAML::load(read_attribute(:_ar_data)))[accessor]
 			end
 
 			define_method("#{accessor}=") do |value|
-				self._ar_data ||= {}
-				self._ar_data[accessor] = value
+				data = read_attribute(:_ar_data)
+				write_attribute(:_ar_data, {}) if data.nil?
+				write_attribute(:_ar_data, data.merge(accessor.to_sym => value))
 			end
 		end
 
@@ -112,6 +115,19 @@ ActiveRecord::Base.class_eval do
 	def namespaced_class(symbol_name)
 		path = self.class
 		self.class._internal_namespaced_class(path, symbol_name)
+	end
+
+	def self.verify_constants()
+		bad_constant = ""
+		begin	
+			self::CONSTANT_LIST.each do |constant_name|
+				bad_constant = constant_name
+				self.const_get(constant_name)
+			end
+			return true
+		rescue NameError
+			raise "#{self.class.to_s}: undefined constant #{bad_constant}"
+		end
 	end
 
 end

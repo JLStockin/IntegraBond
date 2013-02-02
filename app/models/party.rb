@@ -8,10 +8,12 @@ class Party < ActiveRecord::Base
 
 	attr_accessible :contact_id, :tranzaction_id, :contact_strategy
 
-	belongs_to	:tranzaction, class_name: ::Contract, foreign_key: :tranzaction_id
+	belongs_to	:tranzaction, class_name: Contract, foreign_key: :tranzaction_id
 	belongs_to	:contact
 	accepts_nested_attributes_for :contact
 	has_one		:invitation, dependent: :destroy
+	has_many	:origins, class_name: Valuable, foreign_key: :origin_id
+	has_many	:dispositions, class_name: Valuable, foreign_key: :disposition_id
 
 	scope :parties_for, lambda {|usr| joins{contact}.where{contact.user_id == usr.id}}
 
