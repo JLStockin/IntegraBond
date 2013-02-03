@@ -10,7 +10,7 @@ class Party < ActiveRecord::Base
 
 	belongs_to	:tranzaction, class_name: Contract, foreign_key: :tranzaction_id
 	belongs_to	:contact
-	accepts_nested_attributes_for :contact
+	#accepts_nested_attributes_for :contact
 	has_one		:invitation, dependent: :destroy
 	has_many	:origins, class_name: Valuable, foreign_key: :origin_id
 	has_many	:dispositions, class_name: Valuable, foreign_key: :disposition_id
@@ -43,7 +43,7 @@ class Party < ActiveRecord::Base
 			params[self.ugly_prefix][:find_type_index].to_i
 		)
 		contact_data = params[:contact][:contact_data]
-		contact = Contact.create_contact(
+		contact = Contact.new_contact(
 			contact_type,
 			contact_data	
 		)
@@ -89,34 +89,6 @@ class Party < ActiveRecord::Base
 		else
 			raise "party attribute data not found in params"
 		end
-	end
-
-	#
-	# Code that belongs on a decorator
-	#
-	def description()
-		descriptor_class = self.namespaced_class(:ModelDescriptor)
-		descriptor_class::PARTY_DESCRIPTIONS[ActiveRecord::Base.const_to_symbol(self.class)]
-	end
-
-	#
-	# Legal description of the User (to the greatest extent possible)
-	#
-	def dba(verbose=false)
-		suffix = verbose ? " (unresolved party)" : "" 
-
-		if self.contact.nil? then
-			ret = "#{self.class.const_to_symbol(self.class)}"
-		elsif !self.invitation.nil?
-			suffix = " (invited to #{SITE_NAME})"
-			ret = "#{self.contact.data}"
-		elsif !self.contact.user.nil? then
-			suffix = " (#{self.contact.user.username})"
-			ret = "#{self.contact.user.first_name} #{self.contact.user.last_name}"
-		else
-			ret = "#{self.contact.data}"
-		end
-		ret + (verbose ? suffix : "")
 	end
 
 	#############################################################################
@@ -177,6 +149,31 @@ class Party < ActiveRecord::Base
 
 	def ugly_prefix()
 		self.class.to_s.downcase.gsub('::', '_').to_sym
+	end
+
+	def description()
+		descriptor_class = self.namespaced_class(:ModelDescriptor)
+		descriptor_class::PARTY_DESCRIPTIONS[ActiveRecord::Base.const_to_symbol(self.class)]
+	end
+
+	#
+	# Legal description of the User (to the greatest extent possible)
+	#
+	def dba(verbose=false)
+		suffix = verbose ? " (unresolved party)" : "" 
+
+		if self.contact.nil? then
+			ret = "#{self.class.const_to_symbol(self.class)}"
+		elsif !self.invitation.nil?
+			suffix = " (invited to #{SITE_NAME})"
+			ret = "#{self.contact.data}"
+		elsif !self.contact.user.nil? then
+			suffix = " (#{self.contact.user.username})"
+			ret = "#{self.contact.user.first_name} #{self.contact.user.last_name}"
+		else
+			ret = "#{self.contact.data}"
+		end
+		ret + (verbose ? suffix : "")
 	end
 
 end

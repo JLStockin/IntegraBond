@@ -85,7 +85,7 @@ module ContactTesting
 		def create_new_user_and_contact(user_sym, contact_class_sym)
 			user = test_create_user(user_sym)
 			data = test_contact_data(user_sym, contact_class_sym)
-			contact = Contact.create_contact(contact_class_sym, data)
+			contact = Contact.new_contact(contact_class_sym, data)
 			user.contacts << contact
 			return [user, contact]
 		end
@@ -286,7 +286,7 @@ describe Contact do
 				# Create dup Contact for second User with 1st User's contact_data 
 				user2 = create_new_user_and_contact(:user2, sym)[0]
 				data = test_contact_data(:user1, sym)
-				contact = Contact.create_contact(sym, data)
+				contact = Contact.new_contact(sym, data)
 				user2.contacts << contact
 
 				matches = Contact.matching_contacts(sym.to_s, data)

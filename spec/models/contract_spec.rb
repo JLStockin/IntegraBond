@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-class Contracts::Test::BadContract; end
+class Contracts::Bet::BadContract; end
 
 CONTRACT_LIST = [Contracts::Bet::ContractBet]
 

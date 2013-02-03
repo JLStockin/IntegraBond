@@ -47,11 +47,6 @@ class User < ActiveRecord::Base
 		(user && user.salt == cookie_salt) ? user : nil
 	end
 
-	# Contact uses this for lookup
-	#def self.find_by_contact_data(contact_data)
-	#	self.find_by_username(contact_data)
-	#end
-
 	#
 	# Methods that should be moved to a decorator 
 	#
@@ -88,25 +83,25 @@ class User < ActiveRecord::Base
 	def email()
 		return nil if self.new_record?
 		c = get_contact("EmailContact")
-		c.data unless c.nil?
+		c.contact_data unless c.nil?
 	end
 
 	def email=(data)
+		return if data.nil?
 		c = create_or_update_contact("EmailContact", data)
-		c.save!
-		c.data
+		c.contact_data unless c.nil?
 	end
 
 	def phone()
 		return nil if self.new_record?
 		c = get_contact("SMSContact")
-		c.data unless c.nil?
+		c.contact_data unless c.nil?
 	end
 
 	def phone=(data)
+		return if data.nil?
 		c = create_or_update_contact("SMSContact", data)
-		c.save!
-		c.data
+		c.contact_data
 	end
 
 	if Rails.env.test? then
@@ -142,7 +137,7 @@ class User < ActiveRecord::Base
 		def create_or_update_contact(type, data)
 			c = get_contact(type)
 			if c.nil? then
-				c = Contact.create_contact(type.to_sym, data)
+				c = Contact.new_contact(type.to_sym, data)
 				self.contacts << c
 			else
 				c.contact_data = data
@@ -168,8 +163,7 @@ class User < ActiveRecord::Base
 		# Unless User has elected to break the link between username and the EmailContact,
 		# use the email address as the username
 		def update_username()
-			return nil if self.new_record?
 			e = get_contact("EmailContact")
-			(self.username = e.data if username_same_as_email()) unless e.nil?
+			(self.username = e.contact_data if username_same_as_email()) unless e.nil?
 		end
 end

@@ -25,6 +25,9 @@ class PartiesController < ApplicationController
 		if params[:previous_button] then
 			@party.tranzaction.previous_step()
 			redirect_to(edit_tranzaction_path(@party.tranzaction)) and return
+		elsif params[:cancel_button] then
+			@party.tranzaction.destroy()
+			redirect_to tranzactions_path and return
 		end
 
 		if	@party.contact_strategy == Contact::CONTACT_METHODS[0] then

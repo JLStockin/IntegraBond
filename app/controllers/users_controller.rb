@@ -38,7 +38,7 @@ class UsersController < ApplicationController
 				
 				sign_in @user
 				flash[:success] = "Welcome to #{SITE_NAME}."
-				redirect_to @user
+				redirect_to tranzactions_path and return
 			else
 				@title = "Sign up"
 				@user.password = ""

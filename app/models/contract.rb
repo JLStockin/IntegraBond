@@ -83,12 +83,10 @@ class Contract < ActiveRecord::Base
 
 		# Create the party corresponding to admin
 		admin = User.where{users.admin == true}
-		if !admin.nil? then
-			raise "more than one administrator found!" if admin.count > 1
-			admin = admin.first
-		else
-			raise "administrator party not found"
-		end
+		raise "administrator party not found" if admin.count == 0
+		raise "more than one administrator found!" if admin.count > 1
+
+		admin = admin.first
 		raise "administrator has no Contacts" if admin.contacts.nil? or admin.contacts.empty?
 		AdminParty.create!(tranzaction_id: self.id, contact_id: admin.contacts[0].id)
 
@@ -267,6 +265,7 @@ class Contract < ActiveRecord::Base
 		if gls.nil? or gls.empty? then
 			return artifacts.last
 		else
+Rails.logger("status_object = #{current_success_goal().class.artifact}")
 			return current_success_goal().class.artifact
 		end
 	end
@@ -314,6 +313,8 @@ class Contract < ActiveRecord::Base
 	# Create a new Tranzaction (Contract instance) 
 	#
 	def self.create_tranzaction(contract_class, current_user)
+		raise "bad contract class" if contract_class.nil?
+		raise "no current user" if current_user.nil?
 		tranz = contract_class.create!()
 		tranz.create_parties(current_user)
 		tranz.create_valuables()
@@ -366,22 +367,36 @@ class Contract < ActiveRecord::Base
 	#
 	def create_parties(current_user)
 		self.class.party_roster.each_with_index do |party_sym, idx|
-			party = self.namespaced_class(party_sym).new()
-
-			# TODO: use a default contact instead of contacts[0]
 			if (idx == 0) then
-				party.contact = current_user.contacts[0]
-				party.contact_strategy = nil 
+				create_first_party(party_sym, current_user)
 			else
-				contact = EmailContact.create!(contact_data: "JoeBlow@example.com")
-				party.contact = contact
-				party.contact_strategy = Contact::CONTACT_METHODS[0]
+				create_party(party_sym)
 			end
-			self.parties << party	# implicit party.save()
 		end
 		return self.parties 
 	end
 
+	# TODO: use a default contact instead of contacts[0]
+	def create_first_party(party_sym, current_user)
+		party = self.namespaced_class(party_sym).new()
+		party.contact = current_user.contacts[0]
+		party.contact_strategy = nil 
+		self.parties << party	# implicit party.save()
+		party
+	end
+
+	def create_party(party_sym)
+		contact = EmailContact.new(contact_data: Contact.dummy_username)
+		contact.save!(validate: false)
+		contact.reload
+
+		party = self.namespaced_class(party_sym).new()
+		party.contact = contact
+		party.contact_strategy = Contact::CONTACT_METHODS[0]
+		self.parties << party	# implicit party.save()?
+		party
+	end
+		
 	#
 	# Create a Tranzaction's Valuables
 	#

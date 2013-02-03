@@ -1,5 +1,6 @@
 <% party = f.object %>
 <% contact = party.contact %>
+<% contact.contact_data = "" if contact.dummy_username? # hack to get placeholder text %>
 
 <fieldset>
 	<h3>Identify <%= model_descriptor(party)::PARTY_DESCRIPTIONS[\
@@ -12,7 +13,14 @@
 			<%= f.radio_button :contact_strategy, Contact::CONTACT_METHODS[0] %>
 			<%= f.label :contact_strategy, "Identify as: " %>
 			<%= fields_for(:contact) do |c_form| %>
-				<%= c_form.text_field :contact_data, value: contact.contact_data %> 
+				<%= c_form.text_field(
+						:contact_data,
+						value: contact.contact_data,
+						placeholder: contact.class.placeholder_text(),
+						autofocus: party.contact_strategy == \
+							Contact::CONTACT_METHODS[0] ? true : false
+					)
+				%> 
 			<% end %>
 			<%= f.select(:find_type_index, find_list) %>
 		</p>
@@ -28,7 +36,13 @@
 			<% unless associates.empty? then %>
 				<%= f.radio_button :contact_strategy, Contact::CONTACT_METHODS[2] %>
 				<%= f.label :contact_strategy, "Use a past associate: " %>
-				<%= f.select(:associate_id, associates) %>
+				<%= f.select(
+						:associate_id,
+						associates, \
+						autofocus: party.contact_strategy == \
+							Contact::CONTACT_METHODS[2] ? true : false
+					)
+				%>
 			<% end %>
 		<% end %>
 	</p>
@@ -46,6 +60,7 @@
 	<fieldset>
 		<%= f.submit "Continue" %>
 		<%= f.submit "Back", :name => "previous_button" %>
+		<%= f.submit "Cancel", :name => "cancel_button" %>
 	</fieldset>
 	</p>
 </div>

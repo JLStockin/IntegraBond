@@ -3,7 +3,7 @@ require 'spec_helper'
 describe "Party Basics" do
 
 	before(:each) do
-		@tranz = prepare_test_tranzaction(Contracts::Test::TestContract)
+		@tranz = prepare_test_tranzaction(Contracts::Bet::TestContract)
 		@party = @tranz.party1
 		@contact = @tranz.party1.contact
 	end

@@ -53,6 +53,23 @@ class Contact < ActiveRecord::Base
 		self.contact_data = self.class.normalize(data)
 	end
 
+	#################################################################################
+	#
+	# Decoration
+	#
+
+	def self.placeholder_text
+		self::PLACEHOLDER_TEXT
+	end
+
+	def self.dummy_username
+		"invalid@example.com"
+	end
+
+	def dummy_username?
+		contact_data == self.class.dummy_username 
+	end
+
 	#
 	#
 	# If contact_data can be mapped to one or more resolved Contacts, return them.
@@ -68,7 +85,7 @@ class Contact < ActiveRecord::Base
 		return contacts
 	end
 
-	def self.create_contact(type, data)
+	def self.new_contact(type, data)
 		klass = type.to_s.constantize
 		c = klass.new()
 		c.contact_data = klass.normalize(data)
@@ -128,21 +145,25 @@ class UsernameContact < Contact
 	CONTACT_TYPE_NAME = 'via username' 
 	validates :contact_data, 	:presence => true,
 								:length => { :within => USERNAME_RANGE }
+	PLACEHOLDER_TEXT = "joeblow@example.com"
 end
 
 class EmailContact < Contact
 	validates_with EmailValidator
 
 	CONTACT_TYPE_NAME = 'via email'
+	PLACEHOLDER_TEXT = "joeblow@example.com"
 end
 
 class SMSContact < Contact
 
 	CONTACT_TYPE_NAME = 'via SMS (text)'
 
+	PLACEHOLDER_TEXT = "408-555-0099"
+
 	validates_with SMSValidator
 
-# Exposed through base class 
+	# Exposed through base class 
 	def data()
 		self.contact_data.nil?\
 			? nil\
