@@ -16,7 +16,10 @@
 
 		<% @tranzactions.each_pair do |trans, parties| %>
 			<tr>
-				<td><%= link_to "#{status_for(trans)}", tranzaction_path(trans) %>
+				<td>
+					<%= link_to "#{model_descriptor(trans).status_for(trans)}", 
+						tranzactions_path(trans)
+					%>
 				</td>
 				<td><%= model_descriptor(trans).contract_name %></td>
 				<% @party_classes.each do |klass| %>

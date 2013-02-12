@@ -30,26 +30,26 @@ describe "Account creation" do
 
 	it "it should save with valid state" do
 		@account.save!
-		expect {@account.set_funds(HUNDRED, FIFTY)}.should_not raise_error
+		expect {@account.set_funds(HUNDRED, FIFTY)}.to_not raise_error
 	end
 
 	it "it should not save when deposit funds don't parse" do
 		@account.save!
-		expect {@account.set_funds(BADMONEY.call, FIFTY)}.should raise_error
+		expect {@account.set_funds(BADMONEY.call, FIFTY)}.to raise_error
 	end
 
 	it "it should not save when reserve/funds ratio is > 1/1" do
 		@account.save!
-		expect {@account.set_funds(HUNDRED, TWO_HUNDRED)}.should raise_error
+		expect {@account.set_funds(HUNDRED, TWO_HUNDRED)}.to raise_error
 	end
 
 	it "it should not save when reserve funds don't parse" do
 		@account.save!
-		expect {@account.set_funds(HUNDRED, BADMONEY.call)}.should raise_error
+		expect {@account.set_funds(HUNDRED, BADMONEY.call)}.to raise_error
 	end
 
 	it "shouldn't allow mass-assignment of funds" do
-		expect {@user.create_account!(funds: 100, hold_funds: 50)}.should raise_error
+		expect {@user.create_account!(funds: 100, hold_funds: 50)}.to raise_error
 	end
 
 	# user
@@ -91,7 +91,7 @@ describe "Account" do
 
 		it "should not be able to reserve more than is available" do
 			@account.set_funds(FIFTY, MZERO)
-			expect {@account.reserve(HUNDRED)}.should raise_error
+			expect {@account.reserve(HUNDRED)}.to raise_error
 		end
 
 		it "funds should be available" do
@@ -108,7 +108,7 @@ describe "Account" do
 		end
 
 		it "should not allow bad available funds" do
-			expect {@account.reserve(BADMONEY.call)}.should raise_error
+			expect {@account.reserve(BADMONEY.call)}.to raise_error
 		end
 
 	end
@@ -156,7 +156,7 @@ describe "Account" do
 		end
 
 		it "should not accept bad arguments" do
-			expect {@account.sufficient_funds?(BADMONEY.call)}.should raise_error
+			expect {@account.sufficient_funds?(BADMONEY.call)}.to raise_error
 		end
 	end
 
@@ -204,11 +204,11 @@ describe "Account" do
 		end
 
 		it "it should not accept bad arguments" do
-			expect {@account.deposit(-HUNDRED, -HUNDRED)}.should raise_error
+			expect {@account.deposit(-HUNDRED, -HUNDRED)}.to raise_error
 		end
 
 		it "it should not accept 0 argument for first arg" do
-			expect {@account.deposit(MZERO, MZERO)}.should raise_error 
+			expect {@account.deposit(MZERO, MZERO)}.to raise_error 
 		end
 	end
 
@@ -222,7 +222,7 @@ describe "Account" do
 		it "should throw error attempting to reserve too much" do
 			amnt = HUNDRED 
 			@account.set_funds(amnt, MZERO)
-			expect {@account.reserve(amnt + TWO)}.should raise_error 
+			expect {@account.reserve(amnt + TWO)}.to raise_error 
 		end
 
 		it "should correctly influence available amount" do
@@ -266,11 +266,11 @@ describe "Account" do
 		end
 
 		it "should not accept 0" do
-			expect {@account.withdraw(MZERO)}.should raise_error
+			expect {@account.withdraw(MZERO)}.to raise_error
 		end
 
 		it "should not accept bad arguments" do
-			expect {@account.withdraw(BADMONEY.call)}.should raise_error
+			expect {@account.withdraw(BADMONEY.call)}.to raise_error
 		end
 
 	end
@@ -295,8 +295,8 @@ describe "Account" do
 
 		it "should not accept invalid arguments" do
 			@account.set_funds(HUNDRED, TEN)
-			expect {@account.clear(TEN)}.should_not raise_error
-			expect {@account.clear(HUNDRED)}.should raise_error
+			expect {@account.clear(TEN)}.to_not raise_error
+			expect {@account.clear(HUNDRED)}.to raise_error
 		end
 
 		it "should clear correctly" do
@@ -332,11 +332,11 @@ describe "Account" do
 		end
 
 		it "should not accept a bad argument" do
-			expect {@account.clear(BADMONEY.call)}.should raise_error
+			expect {@account.clear(BADMONEY.call)}.to raise_error
 		end
 
 		it "should not accept 0 argument" do
-			expect {@account.clear(MZERO)}.should raise_error
+			expect {@account.clear(MZERO)}.to raise_error
 		end
 	end
 
@@ -347,7 +347,7 @@ describe "Account" do
 
 		it "should not accept 0" do
 			@account.set_funds(HUNDRED, MZERO)
-			expect {@account.reserve(MZERO)}.should raise_error
+			expect {@account.reserve(MZERO)}.to raise_error
 		end
 
 		it "should recognize reserved funds" do 
@@ -452,14 +452,14 @@ describe "Account transfer" do
 				@from_account.set_funds(HUNDRED, FIFTY)
 				expect {
 					Account.transfer(FIFTY, @from_account, @to_account)
-				}.should_not raise_error
+				}.to_not raise_error
 			end
 
 			it "should fail for insufficient funds" do
 				@from_account.set_funds(HUNDRED, HUNDRED)
 				expect {
 					Account.transfer(FIFTY, @from_account, @to_account, MZERO)
-				}.should raise_error
+				}.to raise_error
 			end
 
 			it "available funds should be correct" do
@@ -488,14 +488,14 @@ describe "Account transfer" do
 				@from_account.set_funds(HUNDRED, HUNDRED)
 				expect {
 					Account.transfer(FIFTY, @from_account, @to_account, MZERO)
-				}.should raise_error
+				}.to raise_error
 			end
 
 			it "should succeed when funds should clear first" do
 				@from_account.set_funds(HUNDRED, HUNDRED)
 				expect {
 					Account.transfer(FIFTY, @from_account, @to_account, FIFTY)
-				}.should_not raise_error
+				}.to_not raise_error
 			end
 
 			it "available funds should be correct" do

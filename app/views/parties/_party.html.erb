@@ -1,6 +1,6 @@
 <% party = f.object %>
 <% contact = party.contact %>
-<% contact.contact_data = "" if contact.dummy_username? # hack to get placeholder text %>
+<% contact.data = "" if contact.dummy_contact_data? # hack to get placeholder text to display %>
 
 <fieldset>
 	<h3>Identify <%= model_descriptor(party)::PARTY_DESCRIPTIONS[\
@@ -14,8 +14,8 @@
 			<%= f.label :contact_strategy, "Identify as: " %>
 			<%= fields_for(:contact) do |c_form| %>
 				<%= c_form.text_field(
-						:contact_data,
-						value: contact.contact_data,
+						:data,
+						value: contact.data,
 						placeholder: contact.class.placeholder_text(),
 						autofocus: party.contact_strategy == \
 							Contact::CONTACT_METHODS[0] ? true : false

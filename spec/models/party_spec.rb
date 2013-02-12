@@ -4,12 +4,12 @@ describe "Party Basics" do
 
 	before(:each) do
 		@tranz = prepare_test_tranzaction(Contracts::Bet::TestContract)
-		@party = @tranz.party1
-		@contact = @tranz.party1.contact
+		@party = @tranz.p_party1
+		@contact = @tranz.p_party1.contact
 	end
 
 	it "should create an instance given valid attributes" do
-		party = Contracts::Test::Party1.new()
+		party = Contracts::Bet::PParty1.new()
 		party.tranzaction_id = @tranz.id
 		party.save!
 	end
@@ -21,33 +21,66 @@ describe "Party Basics" do
 
 	describe "update Contact" do
 		before(:each) do
-			@unresolved_contact = EmailContact.create!(contact_data: "joe_blow@example.com")
+			@unresolved_contact = EmailContact.create!(data: "joe_blow@example.com")
 		end
 
 		it "shouldn't update if we're using the same Contact" do
-			@party.update_contact(@contact).should be_nil
+			@party.replace_contact(@contact).should be_nil
 		end
 
 		it "should update if we're using a different Contact" do
-			@party.update_contact(@unresolved_contact).should be == @unresolved_contact
+			@party.replace_contact(@unresolved_contact)
+			@party.contact.should be == @unresolved_contact
 		end
 
 		it "should destroy old Contact if it doesn't point at a User" do
-			@party.update_contact(@unresolved_contact)
+			@party.replace_contact(@unresolved_contact)
 			lambda do
-				@party.update_contact(@contact)
+				@party.replace_contact(@contact)
 			end.should change(Contact, :count).by(-1)
 		end
 
 		it "should *not* destroy the old Contact if it points to a User" do
 			lambda do
-				@party.update_contact(@unresolved_contact)
+				@party.replace_contact(@unresolved_contact)
 			end.should_not change(Contact, :count)
 		end
 	end
-		
+	
+	describe "create_and_replace Contact" do
+		before(:each) do
+			@unresolved_contact = EmailContact.create!(data: "joe_blow@example.com")
+			attributes = FactoryGirl.attributes_for(:buyer_email)
+			@params = {}
+			@params[:contact] = {}
+			@params[:contact][:data] = attributes[:contact_data]
+			@params[:contact][:contact_type] = "EmailContact" 
+
+			@params[@party.class.ugly_prefix] = {}
+			@params[@party.class.ugly_prefix][:find_type_index] = "1"
+		end
+
+		it "should replace the old Contact" do
+			@party.replace_contact(@unresolved_contact)
+			@party.create_and_replace_contact(@params).should be_true
+			@party.reload
+			@party.contact.data.should be == @params[:contact][:data]
+		end
+		it "should destroy the old Contact" do
+			@party.replace_contact(@unresolved_contact)
+			@party.create_and_replace_contact(@params)
+			Contact.exists?(@unresolved_contact).should be_false
+		end
+		it "should not destroy the old Contact" do
+			admin_contact = User.where{users.admin == true}.first.contacts[0]
+			@party.replace_contact(admin_contact)
+			@party.create_and_replace_contact(@params)
+			Contact.exists?(admin_contact).should be_true
+		end
+	end
+
 	it "should have a description" do
-		@party.description.should be == "First Party"
+		@party.description.should be == "First Test Party"
 	end
 
 end
@@ -103,7 +136,7 @@ describe "Party resolution" do
 			end
 
 			it "should return nil if the type index was nil" do
-				@params.merge(@party.ugly_prefix().to_sym => {:find_type_index => nil}) 
+				@params.merge(@party.class.ugly_prefix().to_sym => {:find_type_index => nil}) 
 				@party.get_find_strategy(@params).should be_nil
 			end
 
@@ -119,7 +152,7 @@ describe "Party resolution" do
 			end
 
 			it "should be nil if Party doesn't have a Contact" do
-				@party.update_contact(nil)
+				@party.replace_contact(nil)
 				@party.associate_id.should be_nil
 			end
 
@@ -135,21 +168,21 @@ describe "Party resolution" do
 
 				it "should be user's own first contact if associate_id is nil" do
 					@party.contact_strategy = Contact::CONTACT_METHODS[2]
-					@params.merge(@party.ugly_prefix.to_sym => {associate_id: nil})
+					@params.merge(@party.class.ugly_prefix.to_sym => {associate_id: nil})
 					@party.get_associate_contact(@user, @params).id.should be\
 						== @user.contacts[0].id 
 				end
 
 				it "should return the first Contact for the selected associate" do
 					@party.contact_strategy = Contact::CONTACT_METHODS[2]
-					@params.merge(@party.ugly_prefix.to_sym => {associate_id: 4})
+					@params.merge(@party.class.ugly_prefix.to_sym => {associate_id: 4})
 					@party.get_associate_contact(@user, @params).id.should be\
 						== User.find(@user.id).contacts[0].id
 				end
 
 				it "should return nil if this isn't the current Party location strategy" do
 					@party.contact_strategy = Contact::CONTACT_METHODS[0]
-					@params.merge(@party.ugly_prefix.to_sym => {associate_id: 4})
+					@params.merge(@party.class.ugly_prefix.to_sym => {associate_id: 4})
 					@party.get_associate_contact(@user, @params).should be_nil
 				end
 			end
@@ -202,7 +235,7 @@ describe "Party resolution" do
 		describe "with Contact, User," do
 
 			before(:each) do
-				@party = resolve_party2(@tranz)
+				@party = resolve_party(@tranz, :Party2)
 			end
 
 			describe "suffix requested," do

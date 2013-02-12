@@ -1,33 +1,9 @@
 require 'spec_helper'
 
-INITIAL_BALANCE = Money.parse("$1000")
-VALUABLE_VALUE = Money.parse("$120") 
-
-class Apple < Valuable
-	VALUE = Money.parse("$33")
-	ASSET = false
-	OWNER = :Party1
-end
-
-class Pear < Valuable
-	VALUE = Money.parse("$33")
-	ASSET = true
-	OWNER = :Party1
-end
-
 shared_examples_for "any valuable class" do
 
 	it "should have the right constants" do
 		@klass.verify_constants().should be_true
-	end
-
-	it "should create a new instance given valid attributes" do
-		valuable = @klass.new()
-		valuable.tranzaction_id = 1
-		valuable.value = VALUABLE_VALUE
-		valuable.origin = @party1 
-		valuable.disposition = @party1 
-		valuable.should be_valid 
 	end
 end
 
@@ -41,33 +17,10 @@ shared_examples_for "any valuable" do
 			+ "funds should be released too" do
 		@valuable.reserve()
 		@valuable.release()
-		@valuable.origin.contact.user.account.available_funds.should be == Money.parse("$1000")
+		@valuable.origin.contact.user.account.available_funds.should be \
+			== Money.parse(INITIAL_BALANCE)
 		@valuable.machine_state_name.should be == :s_initial
 	end
-end
-
-def create_parties
-	user = FactoryGirl.create(:buyer_user)
-	email = FactoryGirl.build(:buyer_email)
-	user.contacts << email
-	@party1 = FactoryGirl.create(:party1)
-	@party1.contact = email
-	@party1.contact.user.account.set_funds(INITIAL_BALANCE, 0)
-
-	user = FactoryGirl.create(:seller_user)
-	email = FactoryGirl.build(:seller_email)
-	user.contacts << email
-	@party2 = FactoryGirl.create(:party2)
-	@party2.contact = email
-	@party2.contact.user.account.set_funds(INITIAL_BALANCE, 0)
-end
-
-def config_valuable(valuable)
-	@valuable.value = VALUABLE_VALUE 
-	@valuable.origin = @party1
-	@valuable.disposition = @party1
-	@valuable.tranzaction_id = 1
-	@valuable
 end
 
 describe Valuable do
@@ -75,11 +28,14 @@ describe Valuable do
 	describe "that's not an asset" do
 
 		before(:each) do
-			create_parties()
-			@valuable = Apple.new()
-			@valuable = config_valuable(@valuable)
+			@klass = Contracts::Bet::Valuable1 
+			@tranz = prepare_test_tranzaction(Contracts::Bet::TestContract)
+			@valuable = @klass.new()
+			@valuable.tranzaction = @tranz
+			@valuable.value = VALUABLE_VALUE 
+			@valuable.origin = @tranz.p_party1 
+			@valuable.disposition = @tranz.p_party1 
 			@valuable.save!
-			@klass = Apple
 		end
 
 		it_behaves_like "any valuable class"
@@ -104,8 +60,9 @@ describe Valuable do
 		describe "transferred" do
 
 			before(:each) do
+				resolve_party(@tranz, :PParty2)
 				@valuable.reserve()
-				@valuable.disposition = @party2
+				@valuable.disposition = @valuable.tranzaction.p_party2
 				@valuable.transfer()
 			end
 
@@ -123,8 +80,9 @@ describe Valuable do
 
 		describe "disputed" do
 			before(:each) do
+				resolve_party(@tranz, :PParty2)
 				@valuable.reserve()
-				@valuable.disposition = @party2
+				@valuable.disposition = @valuable.tranzaction.p_party2
 				@valuable.transfer()
 				@valuable.dispute()
 			end
@@ -139,7 +97,7 @@ describe Valuable do
 				@valuable.origin.contact.user.account.total_funds.should be \
 					== INITIAL_BALANCE - VALUABLE_VALUE
 				@valuable.disposition.contact.user.account.available_funds.should be \
-					== Money.parse("$1000")
+					== Money.parse(INITIAL_BALANCE)
 				@valuable.disposition.contact.user.account.total_funds.should be \
 					== INITIAL_BALANCE + VALUABLE_VALUE
 			end
@@ -147,8 +105,9 @@ describe Valuable do
 
 		describe "adjudication" do
 			before(:each) do
+				resolve_party(@tranz, :PParty2)
 				@valuable.reserve()
-				@valuable.disposition = @party2
+				@valuable.disposition = @valuable.tranzaction.p_party2
 				@valuable.transfer()
 				@valuable.dispute()
 			end
@@ -217,11 +176,15 @@ describe Valuable do
 	describe "that is an asset" do
 
 		before(:each) do
-			create_parties()
-			@valuable = Pear.new()
-			@valuable = config_valuable(@valuable)
+			@klass = Contracts::Bet::Valuable2 
+			@tranz = prepare_test_tranzaction(Contracts::Bet::TestContract)
+			resolve_party(@tranz, :PParty2)
+			@valuable = @klass.new()
+			@valuable.tranzaction = @tranz
+			@valuable.value = VALUABLE_VALUE 
+			@valuable.origin = @tranz.p_party1 
+			@valuable.disposition = @tranz.p_party1 
 			@valuable.save!
-			@klass = Pear 
 		end
 
 		it_behaves_like "any valuable class"
@@ -231,72 +194,75 @@ describe Valuable do
 				+ "funds should not be reserved" do
 			@valuable.reserve()
 			@valuable.machine_state_name.should be == :s_reserved
-			@valuable.origin.contact.user.account.available_funds.should be == Money.parse("$1000")
+			@valuable.origin.contact.user.account.available_funds.should be \
+				== Money.parse(INITIAL_BALANCE)
 		end
 
 		it "should transition to :s_transferred when it receives a :transfer; party1's " \
 				+ "funds should not be transferred to party2" do
 			@valuable.reserve()
-			@valuable.disposition = @party2
+			@valuable.disposition = @valuable.tranzaction.p_party2
 			@valuable.transfer()
 			@valuable.origin.contact.user.account.available_funds.should be \
-				== Money.parse("$1000")
+				== Money.parse(INITIAL_BALANCE)
 			@valuable.disposition.contact.user.account.available_funds.should be \
-				== Money.parse("$1000")
+				== Money.parse(INITIAL_BALANCE)
 			@valuable.machine_state_name.should be == :s_transferred
 		end
 
 		it "should transition to :s_reserved when it receives a :dispute; " \
 				+ "there shouldn't be a hold on party2's funds" do
 			@valuable.reserve()
-			@valuable.disposition = @party2
+			@valuable.disposition = @valuable.tranzaction.p_party2
 			@valuable.transfer()
 			@valuable.dispute()
 
 			@valuable.origin.contact.user.account.available_funds.should be \
-				== Money.parse("$1000")
+				== Money.parse(INITIAL_BALANCE)
 			@valuable.origin.contact.user.account.total_funds.should be \
-				== Money.parse("$1000")
+				== Money.parse(INITIAL_BALANCE)
 			@valuable.disposition.contact.user.account.available_funds.should be \
-				== Money.parse("$1000")
+				== Money.parse(INITIAL_BALANCE)
 			@valuable.disposition.contact.user.account.total_funds.should be \
-				== Money.parse("1000")
+				== Money.parse(INITIAL_BALANCE)
 			@valuable.machine_state_name.should be == :s_reserved_4_dispute
 		end
 
 		it "should give party1 the valuable if ruling " \
 				+ "is in party1's favor (:adjudicate event)" do
 			@valuable.reserve()
-			@valuable.disposition = @party2
+			@valuable.disposition = @valuable.tranzaction.p_party2
 			@valuable.transfer()
 			@valuable.dispute()
 			@valuable.adjudicate(:for_plaintif => true)
 
 			@valuable.origin.contact.user.account.available_funds.should be \
-				== Money.parse("$1000")
+				== Money.parse(INITIAL_BALANCE)
 			@valuable.origin.contact.user.account.total_funds.should be == \
-				Money.parse("$1000")
+				Money.parse(INITIAL_BALANCE)
 			@valuable.disposition.contact.user.account.available_funds.should be \
-				== Money.parse("$1000")
+				== Money.parse(INITIAL_BALANCE)
 			@valuable.disposition.contact.user.account.total_funds.should be == \
-				Money.parse("$1000")
+				Money.parse(INITIAL_BALANCE)
 			@valuable.machine_state_name.should be == :s_transferred
 		end
 
 		it "should be no hold on party2's funds if ruling " \
 				+ "is in party2's favor (:adjudicate event)" do
 			@valuable.reserve()
-			@valuable.disposition = @party2
+			@valuable.disposition = @valuable.tranzaction.p_party2
 			@valuable.transfer()
 			@valuable.dispute()
 			@valuable.adjudicate(:for_plaintif => false)
 
-			@valuable.origin.contact.user.account.available_funds.should be == Money.parse("$1000")
-			@valuable.origin.contact.user.account.total_funds.should be == Money.parse("$1000")
+			@valuable.origin.contact.user.account.available_funds.should be \
+				== Money.parse(INITIAL_BALANCE)
+			@valuable.origin.contact.user.account.total_funds.should be \
+				== Money.parse(INITIAL_BALANCE)
 			@valuable.disposition.contact.user.account.available_funds.should be \
-				== Money.parse("$1000")
-			@valuable.disposition.contact.user.account.total_funds.should be == \
-				Money.parse("$1000")
+				== Money.parse(INITIAL_BALANCE)
+			@valuable.disposition.contact.user.account.total_funds.should be \
+				== Money.parse(INITIAL_BALANCE)
 			@valuable.machine_state_name.should be == :s_transferred
 		end
 	end

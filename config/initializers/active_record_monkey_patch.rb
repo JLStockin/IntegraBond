@@ -59,9 +59,10 @@ ActiveRecord::Base.instance_eval do
 			define_method(accessor) do
 				write_attribute(:_ar_data, {}) if self.read_attribute(:_ar_data).nil?
 				data = read_attribute(:_ar_data)
-				data.is_a?(Hash) \
-					? data[accessor]\
-					: (YAML::load(read_attribute(:_ar_data)))[accessor]
+				#data.is_a?(Hash) \
+				#	? data[accessor]\
+				#	: (YAML::load(read_attribute(:_ar_data)))[accessor]
+				data[accessor]
 			end
 
 			define_method("#{accessor}=") do |value|

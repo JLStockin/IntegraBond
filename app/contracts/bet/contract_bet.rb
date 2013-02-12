@@ -42,7 +42,6 @@ module Contracts::Bet
 		# Setup state_machine for collecting data from tranzaction initiator
 		#
 
-		#WIZARD_STEPS = [:terms, { :party2 => :party_locater }, :confirm, :tendered]
 		WIZARD_STEPS = [:terms, :party2, :confirm, :tendered]
 
 		# Note that there isn't a transition between :party2 and :confirm  --
@@ -63,7 +62,8 @@ module Contracts::Bet
 		REVERSE_TRANSITIONS = [
 			on: :previous_step,
 				confirm:		:party2,
-				party2:			:terms
+				party2:			:terms,
+				tendered:		:confirm
 		]
 		
 		DEPENDENCIES =	[

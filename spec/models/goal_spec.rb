@@ -164,7 +164,7 @@ describe "Goal in active Tranzaction" do
 
 	describe "when provisioned with bad args" do
 		it "should throw an exception" do
-			expect {@goal.start(:widget => true)}.should raise_error
+			expect {@goal.start(:widget => true)}.to raise_error
 		end
 	end
 
@@ -224,7 +224,7 @@ describe "Goal in active Tranzaction" do
 	it "should complain if execute() isn't implemented in Goal subclass" do
 		expect {
 			@bogus.execute(nil)
-		}.should raise_error
+		}.to raise_error
 	end
 
 	it "should call subclassed Goal's execute() on provision event" do
@@ -242,7 +242,7 @@ describe "Goal in active Tranzaction" do
 	it "should complain if reverse_execution() isn't implemented in Goal subclass" do
 		expect {
 			@bogus.reverse_execution(nil)
-		}.should raise_error
+		}.to raise_error
 	end
 
 	it "should call reverse_execution() on undo event" do
@@ -262,7 +262,7 @@ describe "Goal in active Tranzaction" do
 	it "should complain if on_expire() isn't implemented in Goal subclass" do
 		expect {
 			@bogus.on_expire(nil)
-		}.should raise_error
+		}.to raise_error
 	end
 
 	it "should call Goal subclass's on_expire() on the expire event" do

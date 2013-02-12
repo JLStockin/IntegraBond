@@ -1,9 +1,15 @@
 require 'rubygems'
 require 'spork'
+require 'money'
+
 #uncomment the following line to use spork with the debugger
 #require 'spork/ext/ruby-debug'
 
+INITIAL_BALANCE = Money.parse("$1000")
+VALUABLE_VALUE = Money.parse("$100")
+
 Spork.prefork do
+
 	# Loading more in this block will cause your tests to run faster. However,
 	# if you change any configuration or code from libraries loaded here, you'll
 	# need to restart spork for it take effect.
@@ -74,7 +80,7 @@ Spork.prefork do
 
 		def create_user(factory_sym)
 			user = FactoryGirl.create(factory_sym)
-			user.account.deposit("$1000", "$0")
+			user.account.deposit(INITIAL_BALANCE, "$0")
 			user.account.save!
 			user_prefix = factory_sym.to_s.split('_')[0] 
 			user.contacts << FactoryGirl.build("#{user_prefix}_email".to_sym)
@@ -111,7 +117,7 @@ Spork.prefork do
 				:contracts_bet_terms_artifact => {:text => "yada yada"},
 				:contracts_bet_offer_expiration => {:offset => "2", :offset_units_index => "2"},
 				:contracts_bet_bet_expiration => {:offset =>"2", :offset_units_index => "2"},
-				tranz.party2.ugly_prefix => {
+				tranz.party2.class.ugly_prefix => {
 					:contact_strategy => Contact::CONTACT_METHODS[2],
 					:find_type_index => "2",
 					:associate_id => user1.id.to_s
@@ -124,12 +130,12 @@ Spork.prefork do
 			params
 		end
 
-		def resolve_party2(tranz)
-			user2 = User.find_by_username(FactoryGirl.attributes_for(:buyer_user)[:username]) 
-			party2 = tranz.model_instance(:Party2)
-			party2.contact = user2.contacts[0]
-			party2.save!
-			party2
+		def resolve_party(tranz, party_sym)
+			user = User.find_by_username(FactoryGirl.attributes_for(:buyer_user)[:username]) 
+			party = tranz.model_instance(party_sym)
+			party.contact = user.contacts[0]
+			party.save!
+			party
 		end
 
 		class Contracts::Bet::TestContract < Contract
@@ -207,7 +213,7 @@ Spork.prefork do
 		class Contracts::Bet::Valuable2 < Valuable
 			VALUE = Money.parse("$11")
 			OWNER = :PParty2
-			ASSET = false
+			ASSET = true 
 		end
 	
 		class Contracts::Bet::PParty1 < Party

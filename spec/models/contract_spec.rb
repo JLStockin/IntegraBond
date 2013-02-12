@@ -26,7 +26,7 @@ describe Contract do
 		end
 
 		it "should error for valid_contract_type? with an invalid contract" do
-			expect {Contracts::Test::BadContract.valid_contract?()}.should raise_error 
+			expect {Contracts::Test::BadContract.valid_contract?()}.to raise_error 
 		end
 	end
 

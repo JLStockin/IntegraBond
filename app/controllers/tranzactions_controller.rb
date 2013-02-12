@@ -41,7 +41,10 @@ class TranzactionsController < ApplicationController
 	# Get /contracts/:id/tranzactions/new
 	def new
 		idx = (params[:contract_id]).to_i
-		@tranz = Contract.create_tranzaction(::ContractManager.contracts[idx], current_user())
+		@tranz = Contract.create_tranzaction(
+			::ContractManager.contracts[idx], 
+			current_user()
+		)
 		redirect_to(edit_tranzaction_path(@tranz))
 	end
 
@@ -64,12 +67,19 @@ class TranzactionsController < ApplicationController
 		elsif @tranzaction.can_next_step?() then
 			@tranzaction.next_step()
 		else
-			raise "no progress possible"
+			raise "no progress possible from: #{@tranzaction.wizard_step}"
 		end
 
 		if @tranzaction.final_step?() then
-			@tranzaction.start()
-			redirect_to tranzactions_path and return
+			begin
+				@tranzaction.start()
+				redirect_to(tranzactions_path) and return
+			rescue InsufficientFundsError
+				flash[:error] = "Insufficient funds to make offer.  "\
+					+ "(Did you forget to deposit money in your account?)"
+				@tranzaction.previous_step()
+				redirect_to(edit_tranzaction_path(@tranzaction)) and return
+			end
 		elsif @tranzaction.configuring_party?() then
 			@party = @tranzaction.instance_eval(@tranzaction.wizard_step)
 			redirect_to(edit_party_path(@party)) and return

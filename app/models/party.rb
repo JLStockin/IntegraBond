@@ -10,7 +10,6 @@ class Party < ActiveRecord::Base
 
 	belongs_to	:tranzaction, class_name: Contract, foreign_key: :tranzaction_id
 	belongs_to	:contact
-	#accepts_nested_attributes_for :contact
 	has_one		:invitation, dependent: :destroy
 	has_many	:origins, class_name: Valuable, foreign_key: :origin_id
 	has_many	:dispositions, class_name: Valuable, foreign_key: :disposition_id
@@ -23,68 +22,77 @@ class Party < ActiveRecord::Base
 		self.contact.user.username
 	end
 
-	def update_contact(new_contact)
+	def replace_contact(new_contact)
 		old_contact = self.contact
 		return nil if new_contact == old_contact
 
 		self.contact = new_contact
-		self.save!
+		result = self.save
 
-		# Destroy previous contact
+		# Destroy previous contact if it doesn't point to a User
 		if !old_contact.nil? and old_contact.user_id.nil? then
-			Contact.destroy(old_contact.id) # if !old_contact.nil? and old_contact.user_id.nil?
+			Contact.destroy(old_contact.id)
 		end
 
-		new_contact
+		return result	
 	end
 
-	def create_and_update_contact(params)
+	def create_and_replace_contact(params)
 		contact_type = Contact.subclasses.key(
-			params[self.ugly_prefix][:find_type_index].to_i
+			params[self.class.ugly_prefix][:find_type_index].to_i
 		)
-		contact_data = params[:contact][:contact_data]
+		contact_data = params[:contact][:data]
 		contact = Contact.new_contact(
 			contact_type,
-			contact_data	
+			contact_data
 		)
-		self.update_contact(contact)
+		unless contact.save
+			contact.errors.each_pair do |key, value|
+				self.errors[:base] << value 
+			end
+			return false
+		end
+		return self.replace_contact(contact)
 	end
 
 	def update_attributes(params)
 				
-		if params.has_key?(self.ugly_prefix) then
-			self.contact_strategy = params[self.ugly_prefix][:contact_strategy]
+		if params.has_key?(self.class.ugly_prefix) then
+			self.contact_strategy = params[self.class.ugly_prefix][:contact_strategy]
 
 			if (self.contact_strategy == Contact::CONTACT_METHODS[0]) then
 
 				# find
-				self.create_and_update_contact(params)
+				self.create_and_replace_contact(params)
 
 			elsif (self.contact_strategy  == Contact::CONTACT_METHODS[1])
 				
 				# invite
-				self.create_and_update_contact(params)
+				result = self.create_and_replace_contact(params)
 
 				# TODO: create Invitation
-
+				
+				return result
 			elsif (self.contact_strategy == Contact::CONTACT_METHODS[2])
 
 				# associate
-				user_id = params[self.ugly_prefix()][:associate_id].to_i
+				user_id = params[self.class.ugly_prefix()][:associate_id].to_i
 				begin
 					user = User.find(user_id)
 				rescue ActiveRecord::RecordNotFound => exc
 					raise "associate not found"
 				end
 
-				self.update_contact(user.contacts.first)
+				self.replace_contact(user.contacts.first)
 
 			elsif (self.contact_strategy == Contact::CONTACT_METHODS[3])
 
 				# published 
-				self.update_contact(nil)
+				result = self.replace_contact(nil)
 
 				# TODO: create Invitation
+				
+				return result
 			end
 		else
 			raise "party attribute data not found in params"
@@ -117,7 +125,7 @@ class Party < ActiveRecord::Base
 	#
 	def get_find_strategy(params)
 		if self.contact_strategy == Contact::CONTACT_METHODS[0] then
-			idx = (params[self.ugly_prefix()][:find_type_index]).to_i
+			idx = (params[self.class.ugly_prefix()][:find_type_index]).to_i
 			contact_type = idx.nil? \
 				? Contact.contact_types.keys.first\
 				: Contact.contact_types.key(idx) 
@@ -139,7 +147,7 @@ class Party < ActiveRecord::Base
 
 	def get_associate_contact(current_user, params)
 		if self.contact_strategy == Contact::CONTACT_METHODS[2] then
-			user_id = params[self.ugly_prefix()][:associate_id] 
+			user_id = params[self.class.ugly_prefix()][:associate_id] 
 			return user_id.nil? ? current_user.contacts.first : User.find(user_id).contacts.first
 		else
 			return nil 
@@ -147,8 +155,8 @@ class Party < ActiveRecord::Base
 
 	end
 
-	def ugly_prefix()
-		self.class.to_s.downcase.gsub('::', '_').to_sym
+	def self.ugly_prefix()
+		self.to_s.downcase.gsub('::', '_').to_sym
 	end
 
 	def description()

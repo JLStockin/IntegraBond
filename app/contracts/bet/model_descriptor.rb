@@ -10,8 +10,8 @@ class Contracts::Bet::ModelDescriptor < ModelDescriptor
 	#
 	# Transaction status
 	#
-	def self.status_for(transaction)
-		klass_or_artifact = transaction.status_object()
+	def self.status_for(tranzaction)
+		klass_or_artifact = tranzaction.status_object()
 		if klass_or_artifact.is_a?(Artifact) then
 			status = STATUS_ARTIFACT_OBJECT_MAP[\
 				ActiveRecord::Base.const_to_symbol(klass_or_artifact.class)\
@@ -103,7 +103,8 @@ class Contracts::Bet::ModelDescriptor < ModelDescriptor
 	PARTY_DESCRIPTIONS = {
 		:Party1	=> 'First Party',
 		:Party2	=> 'Second Party',
-		:PartyTest => 'Test Party'
+		:PParty1 => 'First Test Party',
+		:PParty2 => 'Second Test Party'
 	}
 
 	CONTACT_OTHER_PARTY = 'Contact other party as: '

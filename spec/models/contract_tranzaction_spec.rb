@@ -9,6 +9,19 @@ describe "Tranzaction" do
 		tranz	= Contract.create_tranzaction(klass, user1)
 	end
 
+	it "should destroy and cleanup after a Tranzaction" do
+		create_user(:admin_user)
+		klass = Contracts::Bet::ContractBet
+		user1 = create_user(:seller_user)
+		tranz	= Contract.create_tranzaction(klass, user1)
+		tranz.destroy()
+		Contract.all.count.should be 0
+		Party.all.count.should be 0
+		Valuable.all.count.should be 0
+		Goal.all.count.should be 0
+		Artifact.all.count.should be 0
+	end
+
 	describe "association accessor" do
 		before(:each) do
 			create_user(:admin_user)
@@ -25,6 +38,7 @@ describe "Tranzaction" do
 			@tranz.test_artifact.b.should be == "hello"	
 			@tranz.test_artifact.c.should be == 12
 			@tranz.test_artifact.value.should be == Money.parse("$11") 
+			
 		end
 
 		describe "should write" do
@@ -129,7 +143,7 @@ describe "Tranzaction" do
 		it_should_behave_like "Party" do
 			let(:party) {
 				tranz = prepare_test_tranzaction(Contracts::Bet::ContractBet)
-				party = resolve_party2(tranz)
+				party = resolve_party(tranz, :Party2)
 			}
 		end
 
@@ -145,7 +159,7 @@ describe "Tranzaction" do
 			expect { 
 				tranz = prepare_test_tranzaction(Contracts::Bet::ContractBet)
 				tranz.party3
-			}.should raise_error 
+			}.to raise_error 
 		end
 
 	end
@@ -228,7 +242,6 @@ describe "Tranzaction" do
 	describe "start" do
 		before(:each) do
 			@tranz = prepare_test_tranzaction(Contracts::Bet::ContractBet)
-			#@party = tranz.resolve_party2()
 		end
 
 		it "should be a method" do

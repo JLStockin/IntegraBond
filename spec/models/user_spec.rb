@@ -4,19 +4,20 @@ describe User do
 	
 	before(:each) do
 		@user = FactoryGirl.build(:seller_user)
-		@email = FactoryGirl.build(:seller_email) 
+		@email_contact = FactoryGirl.build(:seller_email) 
+		$debug_this = false
 	end
 
 	it "should create a new instance given valid attributes" do
 		@user.save!
-		@user.contacts << @email
-		@email.save!
+		@user.contacts << @email_contact
+		@email_contact.save!
 		@user.save!
 	end
 
 	it "should save its children" do
 		@user.save!
-		@user.contacts << @email
+		@user.contacts << @email_contact
 		@user.save!
 		@user.contacts.count.should be >= 1
 		@user.contacts.first.new_record?.should be_false
@@ -88,7 +89,7 @@ describe User do
 
 		before(:each) do
 			@user.save!
-			@user.contacts << @email
+			@user.contacts << @email_contact
 		end
 
 		it "should have an encrypted password attribute" do
@@ -170,13 +171,13 @@ describe User do
 		before(:each) do
 
 			@user.save!
-			@user.contacts << @email
+			@user.contacts << @email_contact
 
-			@phone = FactoryGirl.create(:seller_sms)
-			@user.contacts << @phone
+			@phone_contact = FactoryGirl.create(:seller_sms)
+			@user.contacts << @phone_contact
 
-			@username = FactoryGirl.create(:seller_username)
-			@user.contacts << @username
+			@username_contact = FactoryGirl.create(:seller_username)
+			@user.contacts << @username_contact
 		end
 
 		it "should have an active contact once saved" do
@@ -184,45 +185,21 @@ describe User do
 		end
 		
 		it "should default to EmailContact" do
-			@user.active_contact.should == @email
+			@user.active_contact.should be == @email_contact.id
 		end
 
 		it "should have working set and get" do
-			@user.active_contact = @phone.id 
-			@user.active_contact.should == @phone
-			@user.active_contact = @username.id 
-			@user.active_contact.should == @username
+			@user.active_contact = @phone_contact.id 
+			@user.active_contact.should be == @phone_contact.id
+			@user.active_contact = @username_contact.id 
+			@user.active_contact.should be == @username_contact.id
 		end
-	end
 
-	describe "username same as email flag" do
-		before(:each) do
+		it "should persist" do
+			@user.active_contact = @phone_contact.id 
 			@user.save!
-			@user.contacts << @email
-		end
-
-		it "should have the flag set to true by default" do
-			@user.username_same_as_email.should be_true
-		end
-
-		it "should have username same as email initially" do
-			@user.username.should == @email.contact_data
-		end
-
-		it "should assign the contact's email address as the username" do
-			@email.contact_data = "new_email@smith.com" 
-			@email.save!
-			@user.username = "foobar"
-			@user.save!
-			@user.username.should == @email.contact_data
-		end
-
-		it "should allow the email address and username to differ" do
-			@user.username_same_as_email = false 
-			username = @user.username
-			@user.username = "foobar"
-			@user.save!
-			@user.username.should == username 
+			@user.reload
+			@user.active_contact.should be == @phone_contact.id
 		end
 	end
 
@@ -231,25 +208,26 @@ describe User do
 		before(:each) do
 			@user.save!
 
-			@user.contacts << @email
+			@user.contacts << @email_contact
 
-			@phone = FactoryGirl.build(:seller_sms) 
-			@user.contacts << @phone
+			@phone_contact = FactoryGirl.build(:seller_sms) 
+			@user.contacts << @phone_contact
 
 			@email_update = "new_user@example.com"
 			@phone_update = "707-555-0150"
+			@phone_update_raw = "7075550150"
 		end
 
 		describe "(plumbing)" do
 
 			before(:each) do
-				@username = FactoryGirl.create(:seller_username)
-				@user.contacts << @username
-				@username.save!
+				@username_contact = FactoryGirl.create(:seller_username)
+				@user.contacts << @username_contact
+				@username_contact.save!
 				@params = {
-					@email => "user_update@example.com",
-					@phone => "4085550101",
-					@username => @email.contact_data
+					@email_contact => "user_update@example.com",
+					@phone_contact => "4085550101",
+					@username_contact => @email_contact.contact_data
 				}
 			end
 
@@ -259,7 +237,7 @@ describe User do
 					c = nil
 					@params.each_pair do |o, data|
 						expect {
-							c = @user.test_create_or_update_contact(o.class.to_s, data)
+							c = @user.create_or_update_contact(o.class.to_s, data)
 						}.to_not change { Contact.count }
 						c.should be == o 
 						c.contact_data.should be == data
@@ -275,7 +253,7 @@ describe User do
 						o.destroy()	
 						expect {
 							@user.reload
-							c = @user.test_create_or_update_contact(o.class.to_s, data)
+							c = @user.create_or_update_contact(o.class.to_s, data)
 							c.save!
 						}.to change { Contact.count }.by(1)
 						c.should_not be_nil
@@ -313,31 +291,33 @@ describe User do
 
 			describe "email" do
 				it "should fetch the right value" do
-					c = @user.email
-					c.should be == @email.data
+					e = @user.email
+					e.should be == @email_contact.contact_data
 				end
 
 				it "should set a new value" do
 					expect {
 						@user.email = @email_update
+						@user.save!
 					}.to_not change { Contact.count }
-					@email.reload
-					@email.data.should be == @email_update 
+					@email_contact.reload
+					@email_contact.contact_data.should be == @email_update 
 				end
 			end
 
 			describe "phone" do
 				it "should get the right value" do
-					c = @user.phone
-					c.should be == @phone.data
+					p = @user.phone
+					p.should be == @phone_contact.data
 				end
 
-				it "should set the right value" do
+				it "should persist the right value" do
 					expect {
 						@user.phone = @phone_update
+						@user.save!
 					}.to_not change { Contact.count }
-					@phone.reload
-					@phone.contact_data.should be == SMSContact.normalize(@phone_update)
+					@phone_contact.reload
+					@phone_contact.data.should be == @phone_update
 				end
 			end
 
@@ -347,16 +327,17 @@ describe User do
 
 			describe "email" do
 				before(:each) do
-					@email.destroy
+					@email_contact.destroy
 				end
 				it "should fetch nil" do
-					c = @user.email
-					c.should be_nil
+					e = @user.email
+					e.should be_nil
 				end
 
 				it "should set a new value" do
 					expect {
 						@user.email = @email_update 
+						@user.save!
 					}.to change { Contact.count }.by(1)
 					@user.email.should be == @email_update
 				end
@@ -364,16 +345,17 @@ describe User do
 
 			describe "phone" do
 				before(:each) do
-					@phone.destroy
+					@phone_contact.destroy
 				end
 				it "should fetch nil" do
-					c = @user.phone
-					c.should be_nil
+					p = @user.phone
+					p.should be_nil
 				end
 
 				it "should set a new value" do
 					expect {
 						@user.phone = @phone_update 
+						@user.save!
 					}.to change { Contact.count }.by(1)
 					@user.phone.should be == @phone_update
 				end

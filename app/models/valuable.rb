@@ -91,7 +91,8 @@ class Valuable < ActiveRecord::Base
 			end
 		end
 
-		# :dispute -- plaintiff is the Valuable's origin; defendant is Valuable's disposition
+		# :dispute -- plaintiff is the Valuable's origin; defendant is
+		# Valuable's disposition
 		event :dispute do
 			transition :s_transferred => :s_reserved_4_dispute
 		end

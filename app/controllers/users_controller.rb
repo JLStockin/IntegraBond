@@ -1,7 +1,7 @@
 
 class UsersController < ApplicationController
 	before_filter :authenticate, :except => [:new, :create]
-	before_filter :admin_user, :only => :destroy
+	before_filter :admin_user, :only => [:index, :destroy]
 
 	def index
 		@title = "Your Associates"
@@ -33,9 +33,14 @@ class UsersController < ApplicationController
 			return
 		else
 			@user = User.new(params[:user])
+			User.transaction do
+				@user.username = params[:user][:email]
+				@user.save
+				@user.create_or_update_contact("EmailContact", params[:user][:email])
+				@user.create_or_update_contact("SMSContact", params[:user][:phone])
+			end
 
-			if @user.save
-				
+			unless @user.new_record?
 				sign_in @user
 				flash[:success] = "Welcome to #{SITE_NAME}."
 				redirect_to tranzactions_path and return
@@ -54,13 +59,27 @@ class UsersController < ApplicationController
 
 	def update
 		@user = current_user()
+		email = params[:user][:email]
+		phone = params[:user][:phone]
+
+		result = true
+		result = @user.create_or_update_contact("EmailContact", email) unless email.nil? 
+		(result = result and @user.create_or_update_contact("SMSContact", phone)) unless phone.nil? 
+		@user.active_contact = params[:user][:active_contact]
+
+		(fail_edit and return) unless result
+
 		if @user.update_attributes(params[:user])
 			flash[:success] = "Profile updated."
 			redirect_to tranzactions_path and return
 		else
-			@title = "#{@user.first_name} #{@user.last_name}"
-			render 'edit'
+			fail_edit
 		end
+	end
+
+	def fail_edit
+		@title = "#{@user.first_name} #{@user.last_name}"
+		render 'edit' and return
 	end
 
 	def destroy
@@ -72,7 +91,7 @@ class UsersController < ApplicationController
 		else
 			flash[:error] = "You can't destroy yourself!"
 		end
-		redirect_to(users_path)
+		redirect_to(users_path) and return
 	end
 
 end

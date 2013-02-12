@@ -26,13 +26,11 @@ class Contact < ActiveRecord::Base
 		self.subclasses_index += 1
 	end
 
-	attr_accessible :type, :user_id, :contact_data
+	attr_accessible :type, :user_id, :data
 	attr_accessor	:type_index
 	belongs_to		:user, inverse_of: :contacts
 	has_many		:parties
 	has_many		:tranzactions, :through => :parties
-
-	before_validation :normalize
 
 	#
 	# Does this Contact point to a User? 
@@ -46,7 +44,7 @@ class Contact < ActiveRecord::Base
 	end
 
 	def data()
-		self.contact_data.nil? ? nil : self.contact_data.downcase()
+		self.class.de_normalize(self.contact_data)
 	end
 
 	def data=(data)
@@ -62,12 +60,14 @@ class Contact < ActiveRecord::Base
 		self::PLACEHOLDER_TEXT
 	end
 
-	def self.dummy_username
-		"invalid@example.com"
+	def self.dummy_contact_data
+		"<<< *this is invalid* >>>"
 	end
 
-	def dummy_username?
-		contact_data == self.class.dummy_username 
+	def dummy_contact_data?
+		(contact_data.class == Contact.dummy_contact_data.class)\
+			and\
+		(contact_data == Contact.dummy_contact_data)
 	end
 
 	#
@@ -92,13 +92,14 @@ class Contact < ActiveRecord::Base
 		c
 	end
 
-	# Private
-	def normalize()
-		self.data = self.contact_data # data= calls class normalize()
-	end
-
+	# Defaults to be overriden by subclasses
 	def self.normalize(d)
 		d.downcase unless d.nil?
+	end
+
+	# Defaults to be overriden by subclasses
+	def self.de_normalize(d)
+		d
 	end
 
 end
@@ -113,8 +114,6 @@ module ContactValidatorsModule
 			!record.contact_data.nil? and \
 			!record.contact_data.empty? and \
 			record.contact_data =~ pattern
-
-
 	end
 
 end
@@ -143,40 +142,30 @@ end
 class UsernameContact < Contact
 	USERNAME_RANGE = (8..40)
 	CONTACT_TYPE_NAME = 'via username' 
+	PLACEHOLDER_TEXT = "joeblow@example.com"
 	validates :contact_data, 	:presence => true,
 								:length => { :within => USERNAME_RANGE }
-	PLACEHOLDER_TEXT = "joeblow@example.com"
 end
 
 class EmailContact < Contact
-	validates_with EmailValidator
-
 	CONTACT_TYPE_NAME = 'via email'
 	PLACEHOLDER_TEXT = "joeblow@example.com"
+	validates_with EmailValidator
 end
 
 class SMSContact < Contact
-
 	CONTACT_TYPE_NAME = 'via SMS (text)'
-
 	PLACEHOLDER_TEXT = "408-555-0099"
-
 	validates_with SMSValidator
 
-	# Exposed through base class 
-	def data()
-		self.contact_data.nil?\
-			? nil\
-			: ActionController::Base.helpers.number_to_phone(self.contact_data.to_i) 
-	end
-		
-	def data=(data)
-		self.contact_data = self.class.normalize(data)
-	end
 
 # Private
-	def self.normalize(data)
-		data.delete("()-.") unless data.nil?
+	def self.normalize(phone_string)
+		phone_string.delete("()-.") unless phone_string.nil?
+	end
+
+	def self.de_normalize(number)
+		ActionController::Base.helpers.number_to_phone(number.to_i) 
 	end
 
 end

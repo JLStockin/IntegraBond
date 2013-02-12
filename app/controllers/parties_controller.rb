@@ -20,7 +20,9 @@ class PartiesController < ApplicationController
 	def update 
 		@party = Party.find(params[:id].to_i)
 		raise "party not found" if @party.nil?
-		@party.update_attributes(params)
+		unless @party.update_attributes(params) then
+			render 'edit' and return
+		end
 
 		if params[:previous_button] then
 			@party.tranzaction.previous_step()
@@ -36,11 +38,11 @@ class PartiesController < ApplicationController
 			contact = @party.contact
 			matches = Contact.matching_contacts(
 				contact.class,
-				contact.contact_data
+				contact.data
 			)
 			if matches.empty? then
 				flash[:notice] = 	
-					"#{SITE_NAME} user for '#{@party.contact.contact_data}' "\
+					"#{SITE_NAME} user for '#{@party.contact.data}' "\
 						+ "could not be found.  Invite to #{SITE_NAME}?"
 				@party.contact_strategy = Contact::CONTACT_METHODS[1]
 				render 'edit' and return

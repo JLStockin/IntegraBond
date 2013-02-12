@@ -29,10 +29,10 @@ class Expiration < ActiveRecord::Base
 
 	def bind(goal)
 		self.goal = goal
-		model_instance = self.tranzaction.model_instance(self.class.basis_type)
+		basis_instance = self.tranzaction.latest_model_instance(self.class.basis_type)
 		self.value =
 			self.tranzaction.table_class(self.class.basis_type).find(
-				model_instance.id
+				basis_instance.id
 			).created_at.advance(
 				self.offset_units.to_sym => self.offset
 			)

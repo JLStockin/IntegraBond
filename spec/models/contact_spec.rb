@@ -106,33 +106,30 @@ shared_examples_for "SMSContact" do
 
 	["707-444-4045", "(707)555-1212", "800-354-2888", "(800) 438-1244"].each do |good_number|
 		it "should allow '#{good_number}'" do
-			instance.contact_data = good_number 
+			instance.data = good_number 
 			instance.should be_valid
 		end
 	end
 
 	["5434", "12-1234", "1-800-usaloan", "", "abcdefg"].each do |bad_number|
 		it "should flag '#{bad_number}'" do
-			instance.contact_data = bad_number 
+			instance.data = bad_number 
 			instance.should_not be_valid
 		end
 	end
 
 	it "should display sms numbers with correct punctuation" do
-		instance.contact_data = @number_in 
+		instance.data = @number_in 
 		instance.data.should be == ActionController::Base.helpers.number_to_phone(
-			instance.contact_data.to_i
+			instance.contact_data
 		)
 	end
 
 	it "should save sms numbers without punctionation" do
-		instance.contact_data = @number_in 
+		instance.data = @number_in 
 		instance.save!
 		instance.reload
-		instance.contact_data.should be == @number_out 
-		instance.data.should be == ActionController::Base.helpers.number_to_phone(
-			instance.contact_data
-		)
+		instance.contact_data.should be == @number_out
 	end
 
 end
@@ -146,7 +143,7 @@ shared_examples_for "UsernameContact" do
 
 	["sally454", "cschille@example.com", "cschille", "typo_man"].each do |good_name|
 		it "should allow '#{good_name}'" do
-			instance.contact_data = good_name 
+			instance.data = good_name 
 			instance.should be_valid
 		end
 	end
@@ -154,18 +151,18 @@ shared_examples_for "UsernameContact" do
 	["12:23", "", "abcde", "asdfasdfas dfasdfasdf asdfasdfas dfasdfaaaa fda4fac7d0"]\
 			.each do |bad_name|
 		it "should flag '#{bad_name}'" do
-			instance.contact_data = bad_name 
+			instance.data = bad_name 
 			instance.should_not be_valid
 		end
 	end
 	
 	it "should display usernames in lowercase" do
-		instance.contact_data = @name
+		instance.data = @name
 		instance.data.should be == @name.downcase
 	end
 
 	it "should save usernames in lowercase" do
-		instance.contact_data = @email 
+		instance.data = @email 
 		instance.save!
 		instance.reload
 		instance.data.should be == @email.downcase 
@@ -179,36 +176,20 @@ shared_examples_for "EmailContact" do
 	end
 
 	it "should display email address in lowercase" do
-		instance.contact_data = @email 
+		instance.data = @email 
 		instance.data.should be == @email.downcase 
 	end
 
 	it "should save email addresses in lowercase" do
-		instance.contact_data = @email 
+		instance.data = @email 
 		instance.save!
 		instance.reload
 		instance.data.should be == @email.downcase 
 	end
 
-	describe "normalize" do
-
-		it "should be a method" do
-			instance.should respond_to(:normalize)
-		end
-
-		it "should have a working instance method" do
-			instance.contact_data = @email
-			instance.normalize
-			instance.contact_data.should be == @email.downcase 
-		end
-
-		it "should be a class method too" do
-			instance.should respond_to(:normalize)
-		end
-
-		it "should have a working class method" do
-			instance.class.normalize(@email).should be == @email.downcase 
-		end
+	it "should have a working normalize() method" do
+		instance.class.should respond_to(:normalize)
+		instance.class.normalize(@email).should be == @email.downcase 
 	end
 
 end
@@ -229,7 +210,6 @@ describe Contact do
 		it "should be a class method" do
 			Contact.should respond_to(:contact_types)
 		end
-
 	end
 
 	describe "class not included in test suite(!): " do

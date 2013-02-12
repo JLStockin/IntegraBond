@@ -245,7 +245,7 @@ class Contract < ActiveRecord::Base
 		gls = self.goals.all
 		return nil if gls.nil? or gls.empty?
 		ret = gls.select do |g|
-			g.machine_state == "s_provisioning"\
+			g.state == "s_provisioning"\
 				and\
 			(party == :all) ? true : g.available_to.include?(p_sym)
 		end
@@ -253,7 +253,7 @@ class Contract < ActiveRecord::Base
 	end
 	
 	def active?
-		self.machine_state == :completed? ? true : false
+		self.state == :completed? ? true : false
 	end
 
 	#
@@ -265,7 +265,6 @@ class Contract < ActiveRecord::Base
 		if gls.nil? or gls.empty? then
 			return artifacts.last
 		else
-Rails.logger("status_object = #{current_success_goal().class.artifact}")
 			return current_success_goal().class.artifact
 		end
 	end
@@ -386,7 +385,7 @@ Rails.logger("status_object = #{current_success_goal().class.artifact}")
 	end
 
 	def create_party(party_sym)
-		contact = EmailContact.new(contact_data: Contact.dummy_username)
+		contact = EmailContact.new(data: Contact.dummy_contact_data)
 		contact.save!(validate: false)
 		contact.reload
 
@@ -554,7 +553,7 @@ Rails.logger("status_object = #{current_success_goal().class.artifact}")
 	# Setup state_machine for collecting data from Party initiating Tranzaction
 	#
 	# Contract must define the following constants for the state machine:
-	# WIZARD_STEPS, FORWARD_TRANSITIONS, # REVERSE_TRANSITIONS, DEPENDENCIES
+	# WIZARD_STEPS, FORWARD_TRANSITIONS, REVERSE_TRANSITIONS, DEPENDENCIES
 
 	def self.first_step()
 		return self::WIZARD_STEPS.first 
