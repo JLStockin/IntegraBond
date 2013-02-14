@@ -17,13 +17,17 @@ share many common elements:
 
 1) they have one or more parties (e.g, a single person could can make
    a new year's resolution/bet with themselves)
-1) they're all governed by a contract, either explicitly or implicitly
-2) they generally involve the exchange of valuables and the performance
+
+2) they're all governed by a contract, either explicitly or implicitly
+
+3) they generally involve the exchange of valuables and the performance
    of certain actions, including showing up, delivery and recording of
    documents, making payments to escrow or to other parties, etc.
-3) transactions that fail must be carefully unwound, but not necessarily
+
+4) transactions that fail must be carefully unwound, but not necessarily
    to their original state
-4) transactions can involve massively complex state machines
+
+5) transactions can involve massively complex state machines
 
 A business is an entity that solicits (and hopefully performs in)
 transactions with clients.  IntegraBond, then, is the code to run a
@@ -48,23 +52,23 @@ a sub-goal of wanting to pay my bills.)
 Guide to the code
 -----------------
 The controller logic and views are still fairly rudimentary as of the
-above date.  The Contract definition in the
+above date.  The Contract definition in
 
 	'app/contracts/bet'
 
 is a primitive sample contract I've been using to guide development.  
 
-Since I haven't yet componentized it for use by others, I'd urge those
-browsing the code at this early juncture to look primarily at the
+Since I haven't yet componentized IntegraBond for use by others, I urge
+those browsing the code at this early juncture to look primarily at the
 model layer: 
 
-	app/models and
+	app/models
 	app/contracts/bet/
 
 Further, you may find looking at IntegraBond's extenstions to
 ActiveRecord::Base helpful too:
 
-	/config/initializers/active_record_monkey_patch.rb
+	config/initializers/active_record_monkey_patch.rb
 
 
 A note on terminology
@@ -72,11 +76,11 @@ A note on terminology
 Note: due to the heavy overloading of the term 'transaction', IntegraBond
 substitutes two invented words for two different ideas:
 
-	A 'Tranzaction' is business affair between one or more parties;
-	it's governed by a Contract
+	A 'Tranzaction' is business affair between one or more parties.  It's
+	governed by a Contract.
 	
-	An 'Xaction' is an auditable, Account-level movement of funds (a bank
-	transaction).
+	An 'Xaction' is an auditable, Account-level movement of funds; in
+	other words, a bank transaction.
 
 Major areas lacking implementation
 ----------------------------------
