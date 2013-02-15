@@ -3,7 +3,8 @@ Startup in a Can
 
 This is IntegraBond, a generalized transaction execution engine written 
 in Ruby and for Rails.  Think of it as workflow software specifically 
-written to supervise and enforce the execution of business transactions.Alternatively, think of it as a 'startup-in-a-can'.
+written to supervise and enforce the execution of business transactions.
+Alternatively, think of it as a 'startup-in-a-can'.
 
 What is it?
 -----------
