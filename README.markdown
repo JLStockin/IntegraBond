@@ -1,4 +1,5 @@
 Startup in a Can
+----------------
 
 This is IntegraBond, a generalized transaction execution engine written 
 in Ruby and for Rails.  Think of it as workflow software specifically 
