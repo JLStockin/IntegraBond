@@ -8,7 +8,8 @@ gem 'will_paginate', '~> 3.0.0'
 gem 'thin', '~>1.3.1'
 gem 'money-rails', '0.5.0'
 gem 'squeel'
-gem 'mysql2'
+#gem 'mysql2'
+gem 'pg'
 
 # Bundle edge Rails instead:
 # gem 'rails', :git => 'git://github.com/rails/rails.git'
