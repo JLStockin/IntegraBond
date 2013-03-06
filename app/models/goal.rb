@@ -163,7 +163,7 @@ class Goal < ActiveRecord::Base
 	before_create GoalInitializer
 
 	def self.valid_goal?
-		constants = [ :ARTIFACT, :CHILDREN, :STEP_CHILDREN,
+		constants = [ :ARTIFACT, :CHILDREN, :STEPCHILDREN,
 			:AVAILABLE_TO, :FAVORITE_CHILD, :EXPIRATION,
 			:SELF_PROVISION
 		]
@@ -177,14 +177,21 @@ class Goal < ActiveRecord::Base
 	#
 	# request provisioning, request expiration, and if so requested, self-provision
 	#
-	def start()
-		_start()
+	def start(params = {})
+		if params[:bang] then
+			_start!()
+		else
+			_start()
+		end
+
 		if self.class.expiration.nil? and self.class.self_provision? then
 			self.tranzaction.create_artifact_for(self)
 		end
 	end
 
 	def procreate()
+		return if self.class.children.nil?
+
 		self.class.children().each do |goal_type|
 			goal = self.tranzaction.model_instance(goal_type)
 			if goal.nil? then
@@ -198,6 +205,8 @@ class Goal < ActiveRecord::Base
 	end
 
 	def disable_stepchildren()
+		return if self.class.stepchildren.nil?
+
 		self.class.stepchildren().each do |goal_type|
 			stepchild = self.tranzaction.model_instance(goal_type)
 			raise "stepchild '#{goal_type}' not found" if stepchild.nil?
@@ -237,6 +246,12 @@ class Goal < ActiveRecord::Base
 	# Called on a expire event if Goal actually expires
 	def on_expire(artifact)
 		raise "subclass must implement expire()"
+	end
+
+	# Code that should live in a decorator
+	def description()
+		descriptor_class = self.namespaced_class(:ModelDescriptor)
+		descriptor_class::GOAL_DESCRIPTIONS[ActiveRecord::Base.const_to_symbol(self.class)]
 	end
 
 	state_machine :initial => :s_initial do

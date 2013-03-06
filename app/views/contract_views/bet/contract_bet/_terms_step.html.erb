@@ -1,6 +1,6 @@
 <p>
 <fieldset>
-	<%= t.label :party1_bet, "Amount" %>
+	<%= t.label :party1_bet, "Amount (#{t.object.party1_bet.currency})" %>
 	<%= fields_for(t.object.party1_bet) do |p1_bet_fields| %>
 		<%= p1_bet_fields.text_field :value %>
 	<% end %>

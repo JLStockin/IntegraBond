@@ -33,10 +33,25 @@ class Artifact < ActiveRecord::Base
 		self::IMMUTABLE
 	end
 
+	def creation_message()
+		descriptor_class = self.namespaced_class(:ModelDescriptor)
+		descriptor_class::ARTIFACT_DESCRIPTIONS[ActiveRecord::Base.const_to_symbol(self.class)]
+	end
+
 	CONSTANT_LIST = [
 		'IMMUTABLE'
 	]
 
+	def fire_goal()
+		goal = self.goal
+		unless goal.nil?
+			if ( self.is_a?(ExpiringArtifact) ) then
+				goal.expire!(self)
+			elsif ( self.is_a?(ProvisionableArtifact) )
+				goal.provision!(self)
+			end
+		end
+	end
 end
 
 class ProvisionableArtifact < Artifact 

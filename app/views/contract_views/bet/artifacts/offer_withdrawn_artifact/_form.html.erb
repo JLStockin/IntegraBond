@@ -1,0 +1,9 @@
+<%= form_for(@artifact, url: goal_artifacts_path(@goal)) do |f| %>
+		<h3>Retract this bet before it's accepted?</h3>
+		<%= render partial_for(@artifact.tranzaction, 'read_only', ''),
+				:tranzaction => @artifact.tranzaction %>
+		<div class="actions">
+			<%= f.submit "Retract" %>
+			<%= f.submit "Back", :name => "previous_button" %>
+		</div>
+<% end %>

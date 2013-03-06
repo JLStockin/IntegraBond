@@ -48,7 +48,7 @@ describe Contract do
 			end
 
 			it "should have an a valid email address for author" do
-				@contract.should respond_to(:author)
+				@contract.should respond_to(:author_email)
 			end
 
 			it "should have tags" do

@@ -33,22 +33,10 @@ module ApplicationHelper
 	end
 
 	#
-	# Get the correct partial for the current wizard step
-	#
-	def partial_for_step(tranzaction)
-		tmp = tranzaction.class.to_s.split('::')
-		klass_sym = tmp[-1]
-		contract_sym = tmp[-2]
-		superclass = tranzaction.class.superclass.to_s
-		path = "contract_views/#{contract_sym.underscore}/#{klass_sym.underscore}"
-		File.join(path, "#{tranzaction.wizard_step}_step")
-	end
-
-	#
 	# Duplicate logic used in ActiveRecord to transform an object into
 	# an index into the params hash
 	#
 	def model_object_to_params_key(model_object)
-		model_object.class.to_s.to_lower.split('::').join('_')
+		model_object.class.to_s.underscore.split('/').join('_')
 	end
 end

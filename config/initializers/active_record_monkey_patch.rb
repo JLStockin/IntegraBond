@@ -45,6 +45,7 @@ ActiveRecord::Base.instance_eval do
 		instance_eval do
 
 			def _symbolize_and_validate_params(params)
+				return params if params.nil?
 				fixed_params = {}
 				params.each_pair do |param, value|
 					param = param.to_sym

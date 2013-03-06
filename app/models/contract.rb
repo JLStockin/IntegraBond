@@ -63,9 +63,9 @@ class Contract < ActiveRecord::Base
 	attr_accessible :originator
 
 	#
-	# Start the Tranzaction state_machine(s)
+	# Start the Tranzaction's Goal(s)' state_machines
 	#
-	def start(start_goals = true)
+	def start(delay_starting_goals = false)
 		seed_tranzaction()
 
 		self.class.children().each do |goal_klass_sym|
@@ -74,7 +74,8 @@ class Contract < ActiveRecord::Base
 			self.goals << goal
 			goal.save!
 
-			goal.start() if start_goals # (For debugging.)
+			# delay_starting_goals is for debugging
+			goal.start(:bang => true) unless delay_starting_goals
 		end
 	end
 
@@ -109,8 +110,8 @@ class Contract < ActiveRecord::Base
 		raise "model_instances called for nil symbol" if subclass_sym.nil?
 
 		table_class = table_class(subclass_sym)
-		sub_class = self.namespaced_class(subclass_sym)
-		cmd = "self.#{table_class.to_s.pluralize.downcase}.where{self.type == #{sub_class}.to_s}"
+		subclass = self.namespaced_class(subclass_sym)
+		cmd = "self.#{table_class.to_s.pluralize.downcase}.where{self.type == #{subclass}.to_s}"
 		self.instance_eval(cmd)
 	end
 
@@ -142,8 +143,10 @@ class Contract < ActiveRecord::Base
 	]
 
 	def table_class(subclass_sym)
-		sub_class = self.namespaced_class(subclass_sym)
-		table_class = sub_class.superclass()
+		subclass = self.namespaced_class(subclass_sym)
+		raise "can't find class '#{subclass_sym}'" if subclass.nil?
+
+		table_class = subclass.superclass()
 		hierarchy_depth = 0
 		while !TABLE_MODELS.include?(table_class) and hierarchy_depth < MAX_HIERARCHY_DEPTH do
 			table_class = table_class.superclass
@@ -202,7 +205,9 @@ class Contract < ActiveRecord::Base
 	# It takes care of loading the classes that are "hidden" from Rails.
 	#
 	def self.register_dependencies()
-		self::DEPENDENCIES.each { |file| require file }
+		self::DEPENDENCIES.each do |file|
+			dep = (file.split('/').map!{|seg| seg.to_s.camelize}).join('::').to_s.constantize
+		end
 	end
 
 	# 
@@ -241,19 +246,34 @@ class Contract < ActiveRecord::Base
 	def active_goals(party)
 		raise "party must be an instance of Party"\
 			unless (party.is_a?(Party) or party == :all)
-		p_sym = self.class.const_to_symbol(party) unless party == :all
+		p_sym = ActiveRecord::Base.const_to_symbol(party.class) unless party == :all
 		gls = self.goals.all
 		return nil if gls.nil? or gls.empty?
 		ret = gls.select do |g|
 			g.state == "s_provisioning"\
 				and\
-			(party == :all) ? true : g.available_to.include?(p_sym)
+			(party == :all) ? true : g.class.available_to.include?(p_sym)
 		end
 		ret
 	end
 	
-	def active?
-		self.state == :completed? ? true : false
+	def status_for(user)
+		descriptor_class = self.namespaced_class(:ModelDescriptor)
+		descriptor_class.status_for(self, user)
+	end
+
+	def party_for(user)
+		parties = self.parties.joins{contact}.where{contact.user_id == user.id}
+		parties.first
+	end
+
+	def has_active_goals?
+		goals = self.active_goals(:all)
+		goals and !goals.empty?
+	end
+
+	def editing?
+		!self.final_step?
 	end
 
 	#
@@ -327,28 +347,26 @@ class Contract < ActiveRecord::Base
 	# instance can be a Tranzaction, Goal, or Expiration
 	# 
 	def create_artifact_for(instance, params = nil)
-		goal = nil
+		artifact = build_artifact_for(instance, params)
+		if artifact then
+			artifact.save!
+			artifact.fire_goal()
+		end
+		return artifact
+	end
+
+	def build_artifact_for(instance, params = nil)
 		artifact = nil
 		artifact_type = instance.class.artifact()
 
-		goal = goal_for(instance)
 		unless artifact_type.nil? then
 			artifact_class = self.namespaced_class(artifact_type)
 			artifact = artifact_class.new()
+			artifact.tranzaction = self
 			artifact.mass_assign_params(params) unless params.nil?
-			artifact.goal = goal
-			self.artifacts << artifact # implicit save
-
-			unless goal.nil?
-				if ( artifact.is_a?(ExpiringArtifact) ) then
-					goal.expire!(artifact)
-				elsif ( artifact.is_a?(ProvisionableArtifact) )
-					goal.provision!(artifact)
-				end
-			end
+			artifact.goal = goal_for(instance)
 		end
-		return artifact
-
+		artifact
 	end
 
 	def goal_for(o)
@@ -494,26 +512,23 @@ class Contract < ActiveRecord::Base
 	#
 	# class accessors for constants
 	#
-
 	def title()
 		return self.title if self.methods.include? :title
-		self.class.contract_name
+		self.contract_name
+	end
+
+	def self.summary()
+		descriptor_class = self.namespaced_class(:ModelDescriptor)
+		descriptor_class::SUMMARY
+	end
+
+	def self.contract_name
+		descriptor_class = self.namespaced_class(:ModelDescriptor)
+		descriptor_class::CONTRACT_NAME
 	end
 
 	def self.version
 		self::VERSION
-	end
-
-	def self.summary 
-		self::SUMMARY
-	end
-
-	def self.author
-		self::AUTHOR_EMAIL
-	end
-
-	def self.contract_name
-		self::CONTRACT_NAME
 	end
 
 	def self.tags

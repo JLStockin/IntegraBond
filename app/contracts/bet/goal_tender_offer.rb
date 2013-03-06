@@ -10,11 +10,12 @@ module Contracts::Bet
 	# created by the Tranzaction.
 	#
 	#########################################################################
+
 	class GoalTenderOffer < Goal
 
-		ARTIFACT = :OfferPresentedArtifact 
-		EXPIRATION = nil 
-		CHILDREN = [:GoalAcceptOffer, :GoalCancelOffer]
+		ARTIFACT = :OfferPresentedArtifact
+		EXPIRATION = nil
+		CHILDREN = [:GoalAcceptOffer, :GoalRejectOffer, :GoalCancelOffer]
 		FAVORITE_CHILD = true
 		STEPCHILDREN = []
 		AVAILABLE_TO = [:Party1]
@@ -22,14 +23,19 @@ module Contracts::Bet
 		SELF_PROVISION = true 
 
 		def execute(artifact)
-			p1_bet = self.tranzaction.party1_bet
-			p1_bet.disposition = self.tranzaction.party1
-			p1_bet.save!
-			p1_bet.reserve()
+			begin
+				p1_bet = self.tranzaction.party1_bet
+				p1_bet.disposition = self.tranzaction.party1
+				p1_bet.save!
+				p1_bet.reserve()
 
-			p1_fees = self.tranzaction.party1_fees 
-			p1_fees.disposition = self.tranzaction.house()
-			p1_fees.reserve()
+				p1_fees = self.tranzaction.party1_fees 
+				p1_fees.disposition = self.tranzaction.house()
+				p1_fees.reserve()
+			rescue InsufficientFundsError
+				artifact.destroy()
+				raise # Propagate error to controller 
+			end
 		end
 
 		def reverse_execution()
@@ -54,15 +60,15 @@ module Contracts::Bet
 
 	Artifact # artifact.rb defines ProvisionableArtifact
 
-	class OfferPresentedArtifact < ProvisionableArtifact
-		PARAMS = {}
-		IMMUTABLE = true
-	end
-
 	class TermsArtifact < ProvisionableArtifact
 		PARAMS = {
 			:text => "PARTY1 bets PARTY2 BET_AMOUNT that PARTY2 will like IntegraBond.\n\nPARTY2 has OFFER_EXPIRATION to accept.  PARTY1 and PARTY2 have BET_EXPIRATION to declare the winner.  Both parties must declare the same winner.  In the event of disagreement, the outcome will be considered in dispute.  Disputes will be resolved through binding arbitration; arbitration costs are born by the loser.\n\nIn the event that one party responds in time, but another does not, the lone respondant's answer will determine the outcome.  If both parties fail to respond in time, the bet will be cancelled."
 		}
+		IMMUTABLE = true
+	end
+
+	class OfferPresentedArtifact < ProvisionableArtifact
+		PARAMS = {}
 		IMMUTABLE = true
 	end
 
@@ -75,7 +81,7 @@ module Contracts::Bet
 		EXPIRATION = nil
 		CHILDREN = nil
 		FAVORITE_CHILD = false
-		STEP_CHILDREN = nil 
+		STEPCHILDREN = [] 
 		AVAILABLE_TO = [:Party1]
 		DESCRIPTION = "Withdraw offer to bet"
 		SELF_PROVISION = false
@@ -103,38 +109,51 @@ module Contracts::Bet
 
 		ARTIFACT = :OfferAcceptedArtifact
 		EXPIRATION = :OfferExpiration
-		CHILDREN = [:GoalDeclareWinner, :GoalMutualCancellationArtifact]
+		CHILDREN = [:GoalDeclareWinner, :GoalMutualCancellation]
 		FAVORITE_CHILD = true
 		STEPCHILDREN = [:GoalRejectOffer, :GoalCancelOffer]
 		AVAILABLE_TO = [:Party2]
 		DESCRIPTION = "Accept offer"
 
 		def execute(artifact)
-
+			retval = true 
 			p2 = self.tranzaction.party2
-
 			p2_bet = self.tranzaction.party2_bet
-			unless p2_bet.nil? then
-				p2_bet.origin = p2
-				p2_bet.disposition = p2
-				p2_bet.save!
-				p2_bet.reserve
+			p1 = self.tranzaction.party1
+			begin
+				unless p2_bet.nil? then
+					p2_bet.origin = p2
+					p2_bet.disposition = p2
+					p2_bet.save!
+					p2_bet.reserve
+				end
+
+				p2_fees = self.tranzaction.party2_fees
+				unless p2_fees.nil? then
+					p2_fees.origin = p2
+					p2_fees.disposition = self.tranzaction.house()
+					p2_fees.save!
+					p2_fees.reserve
+				end
+
+				self.tranzaction.party1_fees.disposition = self.tranzaction.house()
+				self.tranzaction.party1_fees.save!
+			rescue InsufficientFundsError => error
+				artifact.destroy()
+				retval = false
+				msg = "Insufficient funds to make offer -- error '#{error}')."
+				msg += "  (Did you forget to deposit money in your account?)"
+				self.tranzaction.flash_party(p2, msg)
 			end
 
-			p2_fees = self.tranzaction.party2_fees
-			unless p2_fees.nil? then
-				p2_fees.origin = p2
-				p2_fees.disposition = self.tranzaction.house()
-				p2_fees.save!
-				p2_fees.reserve
+			if retval then
+				msg = "Offer accepted by #{p2.user_identifier}"
+				self.tranzaction.flash_party(p1, msg)
+				msg = "You have accepted the offer"
+				self.tranzaction.flash_party(p2, msg)
 			end
 
-			self.tranzaction.party1_fees.disposition = self.tranzaction.house()
-			self.tranzaction.party1_fees.save!
-
-			msg = "Offer accepted by #{p2.user_identifier}"
-			self.tranzaction.flash_party(p2, msg)
-			true
+			retval	
 		end
 
 		def reverse_execution() 
@@ -144,10 +163,12 @@ module Contracts::Bet
 		end
 
 		def on_expire(artifact)
-			msg = "Offer expired; releaseing funds" 
+			msg = "Offer expired; releasing funds" 
+			p1 = self.tranzaction.party1
+			p2 = self.tranzaction.party2
 			self.tranzaction.flash_party(p1, msg)
 			self.tranzaction.flash_party(p2, msg)
-			cancel_transaction()	
+			cancel_tranzaction()	
 			true
 		end
 
@@ -192,7 +213,7 @@ module Contracts::Bet
 			self.tranzaction.flash_party(party1, msg1)
 			self.tranzaction.flash_party(party2, msg2)
 
-			cancel_transaction()
+			cancel_tranzaction()
 		end
 
 		def reverse_execution()
@@ -275,14 +296,14 @@ module Contracts::Bet
 				confirmations[:Party2][0].counted = true
 				confirmations[:Party2][0].save!
 
-				cancel_transaction()
+				cancel_tranzaction()
 
 				msg2 = "Transaction cancelled by mutual agreement."
 				Rails.logger.info(msg2)
 
 				have_cancellation = true
 			else
-				self.machine_state = :s_provisioning
+				self.state = :s_provisioning
 				self.save!
 				self.start
 				have_cancellation = false 
@@ -326,31 +347,21 @@ module Contracts::Bet
 		DESCRIPTION = "Indicate the Winner"
 
 		def execute(artifact)
-			have_a_winner = false
-			artifact = self.tranzaction.latest_model_instance(:OutcomeAssertionArtifact)
-
-			if (	artifact.winner == other_party(artifact.origin) and\
-					artifact.counted == false
-			) then
-				# We have a winner.
+			origin, winner = winner(artifact)
+			if !(winner.nil?) then
 				
-				# Create a new Artifact noting that and close transaction.	
-				result = ::Contracts::Bet::OutcomeAssertionArtifact.new()
-				result.tranzaction_id = self.tranzaction_id
-				result.mass_assign_params( origin: :PartyAdmin, winner: artifact.winner)
-
-				# Mark all the artifacts that we used to establish this conclusion.
-				artifact.counted = true
-				artifact.save!
-				result.counted = true
-				result.goal = self 
-				result.save!
+				# Create new Artifact with origin administrator 
+				new_artifact = OutcomeAssertionArtifact.new()
+				new_artifact.tranzaction = self.tranzaction
+				new_artifact.winner = winner
+				new_artifact.origin = :PartyAdmin
+				new_artifact.save!
 
 				# Dispense bet monies
-				to_release = (result.winner == :Party1)\
+				to_release = (winner == :Party1)\
 					? self.tranzaction.party1_bet \
 					: self.tranzaction.party2_bet 
-				to_transfer = (result.winner == :Party1)\
+				to_transfer = (winner == :Party1)\
 					? self.tranzaction.party2_bet : self.tranzaction.party1_bet 
 
 				to_transfer.disposition = to_release.origin 
@@ -358,41 +369,41 @@ module Contracts::Bet
 				to_transfer.transfer
 
 				# Dispense fees.  Winner pays the house.
-				to_release = (result.winner == :Party1)\
+				to_release = (winner == :Party1)\
 					? self.tranzaction.party2_fees\
 					: self.tranzaction.party1_fees
-				to_transfer = (result.winner == :Party1)\
+				to_transfer = (winner == :Party1)\
 					? self.tranzaction.party1_fees\
 					: self.tranzaction.party2_fees 
 				to_transfer.disposition = self.tranzaction.house() 
 				to_release.release
 				to_transfer.transfer
 
+
 				# We're done.  Disable all goals.
 				self.tranzaction.disable_active_goals(self)
 
 				user = tranzaction.model_instance(artifact.winner).contact.user
-				msg0 = "\n\n#{user.first_name} #{user.last_name} wins."
-				Rails.logger.info(msg0)
-				msg1 = "Transaction closed."
-				Rails.logger.info(msg1)
-
-				have_a_winner = true
+				msg = "#{user.first_name} #{user.last_name} wins.  Transaction closed."
+				p1 = self.tranzaction.party1
+				p2 = self.tranzaction.party2
+				self.tranzaction.flash_party(p1, msg)
+				self.tranzaction.flash_party(p2, msg)
 			else
-				self.machine_state = :s_provisioning
+				# Restart this Goal
+				self.state = :s_initial
 				self.save!
 				self.start
-
-				origin = tranzaction.model_instance(artifact.origin).contact.user
-				winner = tranzaction.model_instance(artifact.winner).contact.user
+				origin = tranzaction.model_instance(origin.to_sym).contact.user
 				msg = "#{origin.first_name} #{origin.last_name} " \
-					+ "asserts that #{winner.first_name} #{winner.last_name} won."
-				Rails.logger.info(msg)
-
-				have_a_winner = false 
+					+ "asserts that #{origin.first_name} #{origin.last_name} won."
+				p1 = self.tranzaction.party1
+				p2 = self.tranzaction.party2
+				self.tranzaction.flash_party(p1, msg)
+				self.tranzaction.flash_party(p2, msg)
 			end
 
-			have_a_winner	
+			!winner.nil?	
 		end
 
 		# TODO: implement 
@@ -403,19 +414,25 @@ module Contracts::Bet
 		def on_expire(artifact)
 			msg0 = "Transaction expired." 
 			Rails.logger.info(msg0)
-			cancel_transaction()
+			cancel_tranzaction()
 			true
 		end
 
 		private
-			def other_party(party)
-				party == :Party1 ? :Party2 : :Party1
+			def winner(artifact)
+				return (artifact.origin == :Party1) ^ (artifact.winner == :Party1)\
+					? [artifact.origin, artifact.winner]\
+					: [artifact.origin, nil]
 			end
 	end
 
 	class OutcomeAssertionArtifact < ProvisionableArtifact
 		PARAMS = {origin: nil, winner: nil}
 		IMMUTABLE = true
+		before_save do
+			self.origin = self.origin.to_sym unless self.origin.nil?
+			self.winner = self.winner.to_sym unless self.winner.nil?
+		end
 	end
 
 	class BetExpiration < Expiration

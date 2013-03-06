@@ -33,4 +33,34 @@ module TranzactionsHelper
 		model_descriptor(tranzaction).status_for(tranzaction)
 	end
 
+	#
+	# Get the correct partial for the current wizard step
+	#
+	def partial_for_state(tranzaction)
+		tmp = tranzaction.class.to_s.split('::')
+		klass_sym = tmp[-1]
+		contract_sym = tmp[-2]
+		superclass = tranzaction.class.superclass.to_s
+		path = "contract_views/#{contract_sym.underscore}/#{klass_sym.underscore}"
+		File.join(path, "#{tranzaction.wizard_step}_step")
+	end
+
+	#
+	# Get the appropriate partial named by partial, for the Contract type
+	# obtained from obj, from the immediate parent directory 'directory'
+	#
+	def partial_for(obj, partial, parent)
+		tmp = obj.class.to_s.split('::')
+		klass_sym = tmp[-1] # e.g, 'OfferArtifact'
+		contract_sym = tmp[-2] # e.g, 'Bet'
+		path = nil
+		if (parent != '') then
+			path = "contract_views/#{contract_sym.underscore}/#{parent}/#{klass_sym.underscore}"
+			# e.g, contract_views/bet/artifacts/OfferArtifact
+		else
+			path = "contract_views/#{contract_sym.underscore}/"
+			# e.g, contract_views/bet/
+		end
+		File.join(path, partial)
+	end
 end

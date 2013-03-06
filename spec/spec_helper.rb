@@ -153,7 +153,7 @@ Spork.prefork do
 				:BetExpiration\
 			]
 			CHILDREN = [:TestGoal] 
-			ARTIFACT = nil 
+			ARTIFACT = :TermsArtifact
 			PARTY_ROSTER = [:PParty1, :PParty2]
 			WIZARD_STEPS = []
 			CONTRACT_NAME = "Test Contract"

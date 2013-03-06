@@ -75,13 +75,31 @@ module Contracts::Bet
 		# Create the wizard's state_machine
 		inject_page_wizard()
 
-		def title()
-			if !party1_bet.nil? and !party1_bet.value.nil? and !party1.nil? \
-				and !party1.contact.nil? then
-				party1_bet().value.to_s + " bet with " + party1().dba()
+		def title(user)
+			party = self.party_for(user)
+			type = party.class.const_to_symbol(party.class)
+			money = nil
+			if type == :Party1 then
+				if !party1_bet.nil? and !party1_bet.value.nil? and !party2.nil? \
+					and !party2.contact.nil? then
+					money = party1_bet().value
+					oparty = party2()
+				else
+					"Bet with a yet-to-be-determined party"
+				end
+			elsif type == :Party2
+				if !party2_bet.nil? and !party2_bet.value.nil? and !party1.nil? \
+					and !party2.contact.nil? then
+					money = party2_bet().value
+					oparty = party1()
+				else
+					raise "second party data corrupt"
+				end
 			else
-				"Bet with a yet-to-be-determined party"
+				raise "invalid Party type '#{type}'"
 			end
+
+			"Bet: #{money.symbol}#{money.to_s} with #{oparty.dba()} (#{self.dated()})"
 		end
 	
 		def update_attributes(params)	
@@ -124,6 +142,29 @@ module Contracts::Bet
 				bet_expiration.save!
 			end
 
+		end
+
+		def other_party_sym(party_sym)
+			party_sym == :Party1 ? :Party2 : :Party1
+		end
+
+		def expand_terms()
+			self.terms_artifact.text\
+		    	.sub('PARTY1', self.party1.dba(true))\
+				.gsub('PARTY1', self.party1.dba(false))\
+				.sub('PARTY2', self.party2.dba(true))\
+				.gsub('PARTY2', self.party2.dba(false))\
+				.gsub('BET_AMOUNT', self.party1_bet.value.to_s\
+					  + ' ' + self.party1_bet.currency)\
+				.gsub('OFFER_EXPIRATION', self.offer_expiration.to_s)\
+				.gsub('BET_EXPIRATION', self.bet_expiration.to_s)
+		end
+
+		def dated()
+			artifact = self.artifacts.last
+			descriptor_class = self.namespaced_class(:ModelDescriptor)
+			desc = descriptor_class::STATUS_ARTIFACT_OBJECT_MAP[ActiveRecord::Base.const_to_symbol(artifact.class)]
+			"#{desc} #{artifact.created_at}"
 		end
 
 	end

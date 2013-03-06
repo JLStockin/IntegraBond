@@ -45,6 +45,7 @@ class TranzactionsController < ApplicationController
 			::ContractManager.contracts[idx], 
 			current_user()
 		)
+
 		redirect_to(edit_tranzaction_path(@tranz))
 	end
 
@@ -52,39 +53,23 @@ class TranzactionsController < ApplicationController
 	def edit 
 		@tranzaction = Contract.find(params[:id].to_i) 
 		raise "tranzaction '#{@tranzaction}' not found" if @tranzaction.nil?
+
+		if @tranzaction.has_active_goals? then
+			late_edit
+		else
+			early_edit
+		end
 	end
 
 	# Post /tranzactions/:id/
 	def update 
 		@tranzaction = Contract.find(params[:id].to_s) 
-		@tranzaction.update_attributes(params)
+		raise "tranzaction '#{@tranzaction}' not found" if @tranzaction.nil?
 
-		if params[:previous_button] and @tranzaction.can_previous_step? then
-			@tranzaction.previous_step()
-		elsif params[:cancel_button] then
-			@tranzaction.destroy()
-			redirect_to tranzactions_path and return
-		elsif @tranzaction.can_next_step?() then
-			@tranzaction.next_step()
+		if @tranzaction.has_active_goals? then
+			late_update
 		else
-			raise "no progress possible from: #{@tranzaction.wizard_step}"
-		end
-
-		if @tranzaction.final_step?() then
-			begin
-				@tranzaction.start()
-				redirect_to(tranzactions_path) and return
-			rescue InsufficientFundsError
-				flash[:error] = "Insufficient funds to make offer.  "\
-					+ "(Did you forget to deposit money in your account?)"
-				@tranzaction.previous_step()
-				redirect_to(edit_tranzaction_path(@tranzaction)) and return
-			end
-		elsif @tranzaction.configuring_party?() then
-			@party = @tranzaction.instance_eval(@tranzaction.wizard_step)
-			redirect_to(edit_party_path(@party)) and return
-		else
-			redirect_to(edit_tranzaction_path(@tranzaction)) and return
+			early_update
 		end
 	end
 
@@ -94,10 +79,69 @@ class TranzactionsController < ApplicationController
 		@tranz = Contract.find(params[:id])
 		@tranz.destroy
 
+		flash[:notice] = "Transaction destroyed"
+
 		respond_to do |format|
 			format.html { redirect_to tranzactions_url }
 			format.json { head :no_content }
 		end
 	end
 
+	private
+
+		# Call when we're just creating/configuring a Tranzaction
+		def early_edit
+			# Pass this off to the Parties controller if needed
+			if @tranzaction.configuring_party?() then
+				@party = @tranzaction.instance_eval(@tranzaction.wizard_step)
+				redirect_to(edit_party_path(@party)) and return
+			end
+		end
+
+		def early_update
+			@tranzaction.update_attributes(params)
+
+			if params[:previous_button] and @tranzaction.can_previous_step? then
+				@tranzaction.previous_step()
+			elsif params[:cancel_button] then
+				destroy() and return
+				# next line is not original, just an untested idea
+				# redirect_to(tranzaction_path(@tranzaction), :method => :delete) and return
+				#@tranzaction.destroy()
+				#redirect_to tranzactions_path and return
+			elsif @tranzaction.can_next_step?() then
+				@tranzaction.next_step()
+			else
+				raise "no progress possible from: #{@tranzaction.wizard_step}"
+			end
+
+			# Make the transition from wizard to Goal-driven behavior
+			if @tranzaction.final_step? then
+				begin
+					@tranzaction.start()
+					redirect_to(
+						tranzactions_path,
+						:notice => "Transaction created"
+					) and return
+				rescue InsufficientFundsError
+					flash[:error] = "Insufficient funds to make offer.  "\
+						+ "(Did you forget to deposit money in your account?)"
+					@tranzaction.previous_step()
+					redirect_to(edit_tranzaction_path(@tranzaction)) and return
+				end
+			elsif @tranzaction.configuring_party?() then # Punt to Party controller
+				@party = @tranzaction.instance_eval(@tranzaction.wizard_step)
+				redirect_to(edit_party_path(@party)) and return
+			else # An ordinary wizard step
+				redirect_to(edit_tranzaction_path(@tranzaction)) and return
+			end
+
+		end
+
+		# Call when we've advanced to the point where Goals are active 
+		def late_edit
+		end
+
+		def late_update
+		end
 end

@@ -89,7 +89,7 @@ model layer:
 	app/models
 	app/contracts/bet/
 
-Further, you may find it usefule to look at the extenstions to
+Further, you may find it useful to look at the extenstions to
 ActiveRecord::Base in
 
 	config/initializers/active_record_monkey_patch.rb

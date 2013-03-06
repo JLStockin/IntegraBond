@@ -1,4 +1,14 @@
-<h2>Transactions</h2>
-	This is show.html.erb
+<h4><%= @tranzaction.title(current_user()) %></h4><br />
+<%= render partial_for(@tranzaction, 'read_only', ''), :tranzaction => @tranzaction %>
 <br />
+<% if @tranzaction.editing? then %>
+	<%=	link_to 'Edit', edit_tranzactions_path(@tranzaction) %>
+<% else %>
+	<% active_goals = @tranzaction.active_goals(@tranzaction.party_for(current_user())) %>
+	<% if active_goals then %>
+		<% active_goals.each do |goal| %>
+			<%=	link_to "    " + goal.description(), new_goal_artifact_path(goal) %>
+		<% end %>
+	<% end %>
+<% end %>
 <%= link_to 'Back', tranzactions_path %>

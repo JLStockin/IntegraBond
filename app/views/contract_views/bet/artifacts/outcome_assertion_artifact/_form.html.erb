@@ -1,0 +1,40 @@
+<%= form_for(@artifact, url: goal_artifacts_path(@goal)) do |f| %>
+	<fieldset>
+		<h3>Declare a winner</h3>
+		<div class="field">I lost
+				<%=
+					f.radio_button(
+						:winner,
+						@goal.tranzaction.other_party_sym(
+							ActiveRecord::Base::const_to_symbol(
+								@goal.tranzaction.party_for(current_user).class
+							)
+						).to_s
+					)
+				%>
+		</div>
+		<div class="field">I Won 
+				<%=
+					f.radio_button(
+						:winner,
+						ActiveRecord::Base::const_to_symbol(
+							@goal.tranzaction.party_for(current_user).class
+						).to_s,
+						checked: true
+					)
+				%>
+		</div>
+		<%= 
+			f.hidden_field(
+				:origin,
+				:value =>
+					ActiveRecord::Base::const_to_symbol(
+						@goal.tranzaction.party_for(current_user).class
+					).to_s
+			)
+		%>
+		<div class="actions">
+			<%= f.submit "Declare/Affirm" %>
+		</div>
+	</fieldset>
+<% end %>

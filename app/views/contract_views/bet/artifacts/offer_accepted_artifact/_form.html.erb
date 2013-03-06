@@ -1,0 +1,9 @@
+<%= form_for(@artifact, url: goal_artifacts_path(@goal)) do |f| %>
+	<fieldset>
+		<h3>Accept this bet?</h3>
+		<div class="actions">
+			<%= f.submit "Accept" %>
+			<%= f.submit "Back", :name => "previous_button" %>
+		</div>
+	</fieldset>
+<% end %>

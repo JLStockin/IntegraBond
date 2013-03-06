@@ -47,8 +47,8 @@ class Party < ActiveRecord::Base
 			contact_data
 		)
 		unless contact.save
-			contact.errors.each_pair do |key, value|
-				self.errors[:base] << value 
+			contact.errors.each do |attr, error_msg|
+				self.errors.add(attr, error_msg)
 			end
 			return false
 		end

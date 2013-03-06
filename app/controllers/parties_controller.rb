@@ -20,6 +20,7 @@ class PartiesController < ApplicationController
 	def update 
 		@party = Party.find(params[:id].to_i)
 		raise "party not found" if @party.nil?
+
 		unless @party.update_attributes(params) then
 			render 'edit' and return
 		end
@@ -32,6 +33,7 @@ class PartiesController < ApplicationController
 			redirect_to tranzactions_path and return
 		end
 
+		descriptor_class = @party.tranzaction.namespaced_class(:ModelDescriptor)
 		if	@party.contact_strategy == Contact::CONTACT_METHODS[0] then
 
 			# Find
@@ -41,18 +43,20 @@ class PartiesController < ApplicationController
 				contact.data
 			)
 			if matches.empty? then
-				flash[:notice] = 	
-					"#{SITE_NAME} user for '#{@party.contact.data}' "\
-						+ "could not be found.  Invite to #{SITE_NAME}?"
+				notice = descriptor_class::PARTY_LOCATION_NOTICES[:not_found]\
+							.gsub('%SITE_NAME%', SITE_NAME)\
+							.gsub('%PARTY%', @party.contact.data)
+				flash[:notice] = notice 
 				@party.contact_strategy = Contact::CONTACT_METHODS[1]
 				render 'edit' and return
 			elsif matches.count > 1 then
 			    render 'disambiguate' and return
 			else
-				@party.update_contact(matches.first)
+				@party.replace_contact(matches.first)
 				@party.tranzaction.resume()
+				notice = descriptor_class::PARTY_LOCATION_NOTICES[:resolved].gsub('%PARTY%', @party.dba)
 				redirect_to(edit_tranzaction_path(@party.tranzaction),
-					:notice => "Party #{@party.dba} resolved"\
+					:notice => notice 
 				) and return
 			end
 
@@ -60,9 +64,12 @@ class PartiesController < ApplicationController
 			# Invite
 			# TODO: send invitation to User from confirm page
 			@party.tranzaction.resume()
+			notice = descriptor_class::PARTY_LOCATION_NOTICES[:invite]\
+						.gsub('%SITE_NAME%', SITE_NAME)\
+						.gsub('%PARTY%', @party.dba(false))
 			redirect_to(
 				edit_tranzaction_path(@party.tranzaction),
-				:notice => "#{@party.dba(false)} will be invited to #{SITE_NAME}"
+				:notice => notice 
 			) and return
 
 		elsif @party.contact_strategy == Contact::CONTACT_METHODS[2] then
@@ -72,11 +79,13 @@ class PartiesController < ApplicationController
 			if contact.nil? then
 				raise "selected user (id = '#{params[:associate_id]}') not found"
 			else
-				@party.update_contact(contact)
+				@party.replace_contact(contact)
 				@party.tranzaction.resume()
+				notice = descriptor_class::PARTY_LOCATION_NOTICES[:identified]\
+						.gsub('%PARTY%', @party.dba(true))
 				redirect_to(
 					edit_tranzaction_path(@party.tranzaction),
-					:notice => "Party identified: #{@party.dba(true)}"
+					:notice => notice 
 				) and return
 			end
 
@@ -84,10 +93,11 @@ class PartiesController < ApplicationController
 
 			# Publish 
 			# TODO: show invitation to User from confirm page
-			@party.update_contact(nil)
+			@party.replace_contact(nil)
 			@party.tranzaction.resume()
+			notice = descriptor_class::PARTY_LOCATION_NOTICES[:published]
 			redirect_to(edit_tranzaction_path(@party.tranzaction),
-				:notice => "Offer will be published (made available to any user)"
+				:notice => notice 
 			) and return
 		else
 			raise "invalid party identification method"
