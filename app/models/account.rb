@@ -173,7 +173,7 @@ class Account < ActiveRecord::Base
 		"#{funds}, #{hold_funds}(h)"
 	end
 
-	if Rails.env.test? or Rails.env.development?
+	if Rails.env.test? or Rails.env.development? or Rails.env.production
 		def set_funds(amnt, reserve)
 			self.reload
 			amnt = Money.parse(amnt) 
