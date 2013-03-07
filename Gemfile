@@ -32,7 +32,6 @@ group :development, :test do
 end
 
 group :development do
-  gem 'heroku'
   gem 'annotate'
   gem 'spork-rails'
 end
@@ -44,7 +43,6 @@ group :test do
 end
 
 group :production do
-  gem 'heroku'
   gem 'pg'
 end
 
