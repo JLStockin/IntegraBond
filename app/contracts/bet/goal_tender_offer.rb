@@ -199,11 +199,6 @@ module Contracts::Bet
 		DESCRIPTION = "Reject offer"
 		SELF_PROVISION = false
 
-		def provision_needed?()
-			return true
-			#if party1.resolved?
-		end
-
 		def execute(artifact)
 			party1 = self.tranzaction.party1
 			party2 = self.tranzaction.party2
@@ -258,7 +253,7 @@ module Contracts::Bet
 		DESCRIPTION = "Cancel (with other party's approval)"
 		SELF_PROVISION = false
 
-		def execute()
+		def execute(artifact)
 			
 			have_cancellation = false
 
