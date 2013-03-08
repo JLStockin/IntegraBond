@@ -16,6 +16,6 @@ require 'heroku/forward/backends/thin'
 application = File.expand_path('../IntegraBond.ru', __FILE__)
 backend = Heroku::Forward::Backends::Thin.new(application: application, env: env)
 #proxy = Heroku::Forward::Proxy::Server.new(backend, host: '192.168.0.11', port: port)
-proxy = Heroku::Forward::Proxy::Server.new(backend, host: 'LOCALHOST', port: port)
+proxy = Heroku::Forward::Proxy::Server.new(backend, host: '0.0.0.0', port: port)
 proxy.logger = Logger.new(STDOUT)
 proxy.forward!
