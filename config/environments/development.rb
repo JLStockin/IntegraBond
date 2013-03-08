@@ -1,10 +1,12 @@
 IntegraBond::Application.configure do
   # Settings specified here will take precedence over those in config/application.rb
 
-config.after_initialize do
+  config.after_initialize do
 	ActiveRecord::Base.logger = Rails.logger.clone
     ActiveRecord::Base.logger.level = Logger::INFO
-end
+  end
+
+  config.middleware.use Rails::Rack::LogTailer
 
   # In the development environment your application's code is reloaded on
   # every request. This slows down response time but is perfect for development
