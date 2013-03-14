@@ -75,23 +75,28 @@ module Contracts::Bet
 		# Create the wizard's state_machine
 		inject_page_wizard()
 
+		def other_party_for(user)
+			party = self.party_for(user)
+			self.symbol_to_party((party.to_symbol() == :Party1) ? :Party2 : :Party1)
+		end
+
 		def title(user)
 			party = self.party_for(user)
-			type = party.class.const_to_symbol(party.class)
+			party_sym = party.to_symbol()
+			other_party = nil
 			money = nil
-			if type == :Party1 then
+			ret = nil
+			if party_sym == :Party1 then
 				if !party1_bet.nil? and !party1_bet.value.nil? and !party2.nil? \
 					and !party2.contact.nil? then
 					money = party1_bet().value
-					oparty = party2()
-				else
-					"Bet with a yet-to-be-determined party"
+					other_party = self.party2()
 				end
-			elsif type == :Party2
+			elsif party_sym == :Party2
 				if !party2_bet.nil? and !party2_bet.value.nil? and !party1.nil? \
 					and !party2.contact.nil? then
 					money = party2_bet().value
-					oparty = party1()
+					other_party = self.party1()
 				else
 					raise "second party data corrupt"
 				end
@@ -99,9 +104,10 @@ module Contracts::Bet
 				raise "invalid Party type '#{type}'"
 			end
 
-			"Bet: #{money.symbol}#{money.to_s} with #{oparty.dba()} (#{self.dated()})"
+			return "#{money.symbol}#{money.to_s} with #{other_party.dba()}"\
+				unless other_party.nil?
 		end
-	
+
 		def update_attributes(params)	
 
 			if params.has_key?(:contracts_bet_party1_bet) then
@@ -144,10 +150,6 @@ module Contracts::Bet
 
 		end
 
-		def other_party_sym(party_sym)
-			party_sym == :Party1 ? :Party2 : :Party1
-		end
-
 		def expand_terms()
 			self.terms_artifact.text\
 		    	.sub('PARTY1', self.party1.dba(true))\
@@ -158,13 +160,6 @@ module Contracts::Bet
 					  + ' ' + self.party1_bet.currency)\
 				.gsub('OFFER_EXPIRATION', self.offer_expiration.to_s)\
 				.gsub('BET_EXPIRATION', self.bet_expiration.to_s)
-		end
-
-		def dated()
-			artifact = self.artifacts.last
-			descriptor_class = self.namespaced_class(:ModelDescriptor)
-			desc = descriptor_class::STATUS_ARTIFACT_OBJECT_MAP[ActiveRecord::Base.const_to_symbol(artifact.class)]
-			"#{desc} #{artifact.created_at}"
 		end
 
 	end

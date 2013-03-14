@@ -19,6 +19,7 @@ class Artifact < ActiveRecord::Base
 
 	belongs_to	:tranzaction, class_name: Contract, foreign_key: :tranzaction_id
 	belongs_to	:goal
+	belongs_to	:origin, class_name: Party
 	validates	:tranzaction, presence: true unless Rails.env.test?
 
 	after_initialize ArtifactCallbackHook
@@ -33,11 +34,6 @@ class Artifact < ActiveRecord::Base
 		self::IMMUTABLE
 	end
 
-	def creation_message()
-		descriptor_class = self.namespaced_class(:ModelDescriptor)
-		descriptor_class::ARTIFACT_DESCRIPTIONS[ActiveRecord::Base.const_to_symbol(self.class)]
-	end
-
 	CONSTANT_LIST = [
 		'IMMUTABLE'
 	]
@@ -48,10 +44,64 @@ class Artifact < ActiveRecord::Base
 			if ( self.is_a?(ExpiringArtifact) ) then
 				goal.expire!(self)
 			elsif ( self.is_a?(ProvisionableArtifact) )
-				goal.provision!(self)
+				goal.provision(self)
 			end
 		end
 	end
+
+	def status_description_for
+		raise "status_description_for must be implemented in the subclass"
+	end
+
+	def action_description_for
+		raise "action_description_for must be implemented in the subclass"
+	end
+
+	def lookup_description_template(table_sym, key) 
+puts "lookup_description_template(#{table_sym}, #{key})"
+		descriptor_class = self.namespaced_class(:ModelDescriptor)
+		table_class = "#{descriptor_class.to_s}::#{table_sym.to_s}".constantize
+
+		prefix = self.created_at.nil?\
+			? nil : self.created_at.to_formatted_s(:long) + " "
+		desc = nil 
+		if table_sym == :ARTIFACT_STATUS_MAP and prefix then
+puts "table_class=#{table_class}, self.to_symbol=#{self.to_symbol}"
+			desc = prefix + table_class[self.to_symbol()][key]
+		else
+			desc = table_class[self.to_symbol][key]
+		end
+		raise "invalid lookup table #{table_sym}" if desc.nil?
+		desc
+	end
+
+	def substitute_user(s, current_user, other_party, pattern)
+		return s if s.scan(pattern).empty?
+
+		your_party = self.tranzaction.party_for(current_user)
+puts "current_user = #{current_user}"
+puts "substitute_user: your_party=#{your_party}; other_party=#{other_party}"
+		identity = (your_party.id == other_party.id) ? :you : :other
+		s = s.sub(
+			pattern,
+			self.namespaced_class(:ModelDescriptor)::ID_MAPPINGS[identity]
+		)
+		if identity == :other then
+			s = s.sub(
+				'%FIRSTNAME%',
+				other_party.user.first_name
+			).sub(
+				'%LASTNAME%',
+				other_party.user.last_name
+			)
+		end
+		return s
+	end
+
+	def originator?(user)
+		self.tranzaction.party_for(user).id == self.origin.id
+	end
+
 end
 
 class ProvisionableArtifact < Artifact 

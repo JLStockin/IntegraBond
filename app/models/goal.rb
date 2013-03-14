@@ -49,8 +49,8 @@ StateMachine::Machine.class_eval do
 			true
 		end
 
-		# -> provision(artifact)
-		event :provision do
+		# -> _provision(artifact)
+		event :_provision do
 			transition :s_provisioning => :s_completed
 		end
 
@@ -61,6 +61,7 @@ StateMachine::Machine.class_eval do
 				goal.procreate()
 				true
 			else
+puts "===> ...executed #{goal.class}(#{artifact.class}); returned false"
 				false
 			end
 		end
@@ -175,17 +176,28 @@ class Goal < ActiveRecord::Base
 	end
 
 	#
-	# request provisioning, request expiration, and if so requested, self-provision
+	# request provisioning, request expiration, and if so requested, self-provision.
+	# Bang! versions can throw exceptions
 	#
-	def start(params = {})
-		if params[:bang] then
-			_start!()
-		else
-			_start()
-		end
+	def start()
+		_start
+		possibly_self_provision()
+	end
 
-		if self.class.expiration.nil? and self.class.self_provision? then
-			self.tranzaction.create_artifact_for(self)
+	def start!()
+		_start!
+		possibly_self_provision()
+	end
+
+	def provision(artifact)
+		_provision(artifact)
+	end
+
+	def provision!(artifact)
+		if self.class.stubborn? then
+			prov = _provision(artifact)
+		else
+			_provision!(artifact)
 		end
 	end
 
@@ -218,6 +230,10 @@ class Goal < ActiveRecord::Base
 		return (self.can_provision? or self.can_expire?)
 	end
 
+	def can_provision?()
+		return self.state == "s_provisioning"
+	end
+
 	#
 	# Can be called by expire when a Goal times out.  Reverses and disables
 	# all the goals.  Creates the EXPIRE_ARTIFACT if it's defined by the Goal.
@@ -238,6 +254,10 @@ class Goal < ActiveRecord::Base
 		raise "subclass must implement execute()"
 	end
 
+	def self.stubborn?
+		self.valid_constant?("STUBBORN") and self::STUBBORN
+	end
+
 	# Called for undo event
 	def reverse_execution()
 		raise "subclass must implement reverse_execution()"
@@ -250,8 +270,7 @@ class Goal < ActiveRecord::Base
 
 	# Code that should live in a decorator
 	def description()
-		descriptor_class = self.namespaced_class(:ModelDescriptor)
-		descriptor_class::GOAL_DESCRIPTIONS[ActiveRecord::Base.const_to_symbol(self.class)]
+		self.namespaced_class(:ModelDescriptor).goal(self)
 	end
 
 	state_machine :initial => :s_initial do
@@ -261,4 +280,16 @@ class Goal < ActiveRecord::Base
 		inject_expiration
 	end
 			
+	private
+		def possibly_self_provision()
+			if self.class.self_provision? then
+				raise "Goal can't have an Expiration *and* be self-Provisioning"\
+					unless self.class.expiration.nil?
+				self.tranzaction.create_artifact_for(
+					self,
+					self.tranzaction.house
+				)
+			end
+		end
+
 end

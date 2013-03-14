@@ -177,6 +177,7 @@ Spork.prefork do
 			SELF_PROVISION = false 
 
 			def execute(artifact)
+				return true 
 			end
 
 			def reverse_execution()
@@ -186,6 +187,27 @@ Spork.prefork do
 			end
 		end
 
+		class Contracts::Bet::TestGoalFalse < Goal
+
+			ARTIFACT = :OfferPresentedArtifact 
+			EXPIRATION = :TestExpiration
+			CHILDREN = [:GoalAcceptOffer, :GoalCancelOffer]
+			FAVORITE_CHILD = true
+			STEPCHILDREN = []
+			AVAILABLE_TO = [:PParty1]
+			DESCRIPTION = "Present offer"
+			SELF_PROVISION = false 
+
+			def execute(artifact)
+				return false 
+			end
+
+			def reverse_execution()
+			end
+	
+			def on_expire(artifact)
+			end
+		end
 		class Contracts::Bet::TestExpiration < Expiration
 			DEFAULT_OFFSET = 1 
 			DEFAULT_OFFSET_UNITS = :seconds

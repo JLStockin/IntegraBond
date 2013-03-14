@@ -75,7 +75,7 @@ class Contract < ActiveRecord::Base
 			goal.save!
 
 			# delay_starting_goals is for debugging
-			goal.start(:bang => true) unless delay_starting_goals
+			goal.start!() unless delay_starting_goals
 		end
 	end
 
@@ -257,14 +257,15 @@ class Contract < ActiveRecord::Base
 		ret
 	end
 	
-	def status_for(user)
-		descriptor_class = self.namespaced_class(:ModelDescriptor)
-		descriptor_class.status_for(self, user)
-	end
-
+	# Utilities to manage Parties
+	#
 	def party_for(user)
 		parties = self.parties.joins{contact}.where{contact.user_id == user.id}
 		parties.first
+	end
+
+	def symbol_to_party(symbol)
+		self.model_instance(symbol)
 	end
 
 	def has_active_goals?
@@ -276,27 +277,8 @@ class Contract < ActiveRecord::Base
 		!self.final_step?
 	end
 
-	#
-	# Returns either an Artifact, or the class of the Artifact that would be
-	# created if the most recent Goal with (favorite_child? == true) succeeds.
-	#
-	def status_object
-		gls = active_goals(:all)
-		if gls.nil? or gls.empty? then
-			return artifacts.last
-		else
-			return current_success_goal().class.artifact
-		end
-	end
-
-	def current_success_goal
-		gls = active_goals(:all)
-		return nil if gls.nil?
-
-		gls.each do |goal|
-			return goal if goal.class.favorite_child?
-		end
-		return nil
+	def latest_artifact 
+		return artifacts.last
 	end
 
 	#
@@ -338,16 +320,19 @@ class Contract < ActiveRecord::Base
 		tranz.create_parties(current_user)
 		tranz.create_valuables()
 		tranz.create_expirations()
-		tranz.create_artifact_for(tranz)
+		tranz.create_artifact_for(tranz, tranz.party_for(current_user))
 		tranz
 	end
 
 	#
-	# UNTESTED!
+	# Artifact.origin and any params can be set:
+	# 	1) by the controller (e.g, from current_user() or via a hidden field in the form
+	#   2) by a before_save() callback in the model (if not dependent on current_user()) 
+	#
 	# instance can be a Tranzaction, Goal, or Expiration
 	# 
-	def create_artifact_for(instance, params = nil)
-		artifact = build_artifact_for(instance, params)
+	def create_artifact_for(instance, party)
+		artifact = build_artifact_for(instance, party)
 		if artifact then
 			artifact.save!
 			artifact.fire_goal()
@@ -355,7 +340,7 @@ class Contract < ActiveRecord::Base
 		return artifact
 	end
 
-	def build_artifact_for(instance, params = nil)
+	def build_artifact_for(instance, party)
 		artifact = nil
 		artifact_type = instance.class.artifact()
 
@@ -363,8 +348,9 @@ class Contract < ActiveRecord::Base
 			artifact_class = self.namespaced_class(artifact_type)
 			artifact = artifact_class.new()
 			artifact.tranzaction = self
-			artifact.mass_assign_params(params) unless params.nil?
 			artifact.goal = goal_for(instance)
+			artifact.origin = party
+			artifact.subclass_init(instance, party) if artifact.methods.include? :subclass_init
 		end
 		artifact
 	end

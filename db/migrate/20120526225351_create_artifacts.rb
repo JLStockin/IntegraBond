@@ -4,6 +4,7 @@ class CreateArtifacts < ActiveRecord::Migration
 			t.string	:type
 			t.integer	:tranzaction_id
 			t.integer	:goal_id
+			t.integer	:origin_id
 			t.text		:_ar_data
 
 			t.timestamps

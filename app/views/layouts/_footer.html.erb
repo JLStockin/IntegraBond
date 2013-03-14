@@ -4,9 +4,11 @@
 		<% if !signed_in? %>
 			<!--<li><%= link_to "Create Account", signup_path %></li>-->
 		<% else %>
-			<li><%= link_to "Account", user_account_path(current_user) %></li>
+			<% user = current_user %>
+			<li><%= link_to "Account", user_account_path(user) %></li>
 			<li><%= link_to "Associates", users_path %></li>
-			<li><%= link_to "Profile", edit_user_path(current_user) %></li>
+			<li><%= link_to "Profile (#{user.first_name} #{user.last_name})",
+					edit_user_path(user) %></li>
 		<% end %>
 		<li><%= link_to "How it Works", about_path %></li>
 	</ul>

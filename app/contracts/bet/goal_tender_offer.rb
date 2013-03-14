@@ -15,23 +15,24 @@ module Contracts::Bet
 
 		ARTIFACT = :OfferPresentedArtifact
 		EXPIRATION = nil
-		CHILDREN = [:GoalAcceptOffer, :GoalRejectOffer, :GoalCancelOffer]
+		CHILDREN = [:GoalAcceptOffer, :GoalRejectOffer, :GoalWithdrawOffer]
 		FAVORITE_CHILD = true
 		STEPCHILDREN = []
 		AVAILABLE_TO = [:Party1]
 		DESCRIPTION = "Present offer"
 		SELF_PROVISION = true 
+		STUBBORN = false 
 
 		def execute(artifact)
 			begin
 				p1_bet = self.tranzaction.party1_bet
 				p1_bet.disposition = self.tranzaction.party1
 				p1_bet.save!
-				p1_bet.reserve()
+				p1_bet.reserve!()
 
 				p1_fees = self.tranzaction.party1_fees 
 				p1_fees.disposition = self.tranzaction.house()
-				p1_fees.reserve()
+				p1_fees.reserve!()
 			rescue InsufficientFundsError
 				artifact.destroy()
 				raise # Propagate error to controller 
@@ -56,6 +57,7 @@ module Contracts::Bet
 			self.tranzaction.flash_party(self.tranzaction.party1, msg)
 			true
 		end
+
 	end
 
 	Artifact # artifact.rb defines ProvisionableArtifact
@@ -65,18 +67,58 @@ module Contracts::Bet
 			:text => "PARTY1 bets PARTY2 BET_AMOUNT that PARTY2 will like IntegraBond.\n\nPARTY2 has OFFER_EXPIRATION to accept.  PARTY1 and PARTY2 have BET_EXPIRATION to declare the winner.  Both parties must declare the same winner.  In the event of disagreement, the outcome will be considered in dispute.  Disputes will be resolved through binding arbitration; arbitration costs are born by the loser.\n\nIn the event that one party responds in time, but another does not, the lone respondant's answer will determine the outcome.  If both parties fail to respond in time, the bet will be cancelled."
 		}
 		IMMUTABLE = true
+		before_save do
+			self.origin = self.tranzaction.symbol_to_party(:Party1)
+		end
+
+		def status_description_for(user)
+			desc = lookup_description_template(
+				:ARTIFACT_STATUS_MAP,
+				:default
+			)
+		end
+
+		def action_description_for(user)
+			desc = lookup_description_template(
+				:ARTIFACT_ACTION_MAP,
+				self.originator?(user) ? :required : :waiting
+			)
+		end
 	end
 
 	class OfferPresentedArtifact < ProvisionableArtifact
 		PARAMS = {}
 		IMMUTABLE = true
+		# needed because of Goal auto-provision
+		before_save do
+			self.origin = self.tranzaction.symbol_to_party(:Party1)
+		end
+
+		def status_description_for(user)
+			desc = lookup_description_template(
+				:ARTIFACT_STATUS_MAP,
+				:default
+			)
+			desc = substitute_user(
+				desc, user,
+				self.origin, '%ORIGIN%'
+			)
+		end
+
+		def action_description_for(user)
+			desc = lookup_description_template(
+				:ARTIFACT_ACTION_MAP,
+				self.originator?(user) ? :waiting : :required 
+			)
+		end
+
 	end
 
 	#
-	# GoalCancelOffer
+	# GoalWithdrawOffer
 	#
 	#
-	class GoalCancelOffer < Goal
+	class GoalWithdrawOffer < Goal
 		ARTIFACT = :OfferWithdrawnArtifact 
 		EXPIRATION = nil
 		CHILDREN = nil
@@ -84,7 +126,8 @@ module Contracts::Bet
 		STEPCHILDREN = [] 
 		AVAILABLE_TO = [:Party1]
 		DESCRIPTION = "Withdraw offer to bet"
-		SELF_PROVISION = false
+		SELF_PROVISION = false 
+		STUBBORN = false 
 
 		def execute(artifact)
 			self.cancel_tranzaction()
@@ -95,8 +138,28 @@ module Contracts::Bet
 	end
 
 	class OfferWithdrawnArtifact < ProvisionableArtifact
+		before_save do
+			self.origin = self.tranzaction.symbol_to_party(:Party1)
+		end
 		PARAMS = {} 
 		IMMUTABLE = true
+
+		def status_description_for(user)
+			desc = lookup_description_template(
+				:ARTIFACT_STATUS_MAP,
+				:default
+			)
+			desc = substitute_user(
+				desc, user, self.origin, '%ORIGIN%'
+			)
+		end
+
+		def action_description_for(user)
+			desc = lookup_description_template(
+				:ARTIFACT_ACTION_MAP,
+				:default
+			)
+		end
 	end
 
 	#########################################################################
@@ -111,9 +174,11 @@ module Contracts::Bet
 		EXPIRATION = :OfferExpiration
 		CHILDREN = [:GoalDeclareWinner, :GoalMutualCancellation]
 		FAVORITE_CHILD = true
-		STEPCHILDREN = [:GoalRejectOffer, :GoalCancelOffer]
+		STEPCHILDREN = [:GoalRejectOffer, :GoalWithdrawOffer]
 		AVAILABLE_TO = [:Party2]
 		DESCRIPTION = "Accept offer"
+		SELF_PROVISION = false
+		STUBBORN = false 
 
 		def execute(artifact)
 			retval = true 
@@ -175,10 +240,29 @@ module Contracts::Bet
 	end
 
 	class OfferAcceptedArtifact < ProvisionableArtifact
-		PARAMS = {\
-			origin: :Party2
-		}
+		before_save do
+			self.origin = self.tranzaction.symbol_to_party(:Party2)
+		end
+		PARAMS = {}
 		IMMUTABLE = true
+
+		def status_description_for(user)
+			desc = lookup_description_template(
+				:ARTIFACT_STATUS_MAP,
+				:default
+			)
+			desc = substitute_user(
+				desc, user,
+				self.origin, '%ORIGIN%'
+			)
+		end
+
+		def action_description_for(user)
+			desc = lookup_description_template(
+				:ARTIFACT_ACTION_MAP,
+				self.originator?(user) ? :waiting : :requested
+			)
+		end
 	end
 
 
@@ -194,10 +278,11 @@ module Contracts::Bet
 		EXPIRATION = nil
 		CHILDREN = []
 		FAVORITE_CHILD = false 
-		STEPCHILDREN = [:GoalAcceptOffer, :GoalCancelOffer]
+		STEPCHILDREN = [:GoalAcceptOffer, :GoalWithdrawOffer]
 		AVAILABLE_TO = [:Party2]
 		DESCRIPTION = "Reject offer"
 		SELF_PROVISION = false
+		STUBBORN = false 
 
 		def execute(artifact)
 			party1 = self.tranzaction.party1
@@ -222,8 +307,33 @@ module Contracts::Bet
 	end
 
 	class OfferRejectedArtifact < ProvisionableArtifact
+		before_save do
+			self.origin = self.tranzaction.symbol_to_party(:Party2)
+		end
 		PARAMS = {}
 		IMMUTABLE = true
+
+		def status_description_for(user)
+			desc = lookup_description_template(
+				:ARTIFACT_STATUS_MAP,
+				:default
+			)
+			desc = substitute_user(
+				desc, user,
+				self.origin, '%ORIGIN%'
+			)
+		end
+
+		def action_description_for(user)
+			desc = lookup_description_template(
+				:ARTIFACT_ACTION_MAP,
+				:default
+			)
+			desc = substitute_user(
+				desc, user,
+				self.origin, '%ORIGIN%'
+			)
+		end
 	end
 
 	class OfferExpiration < Expiration
@@ -234,6 +344,20 @@ module Contracts::Bet
 	end
 
 	class OfferExpiredArtifact < ExpiringArtifact
+
+		def status_description_for(user)
+			desc = lookup_description_template(
+				:ARTIFACT_STATUS_MAP,
+				:default
+			)
+		end
+
+		def action_description_for(user)
+			desc = lookup_description_template(
+				:ARTIFACT_ACTION_MAP,
+				:default
+			)
+		end
 	end
 
 	#########################################################################
@@ -244,7 +368,7 @@ module Contracts::Bet
 	#########################################################################
 	class GoalMutualCancellation < Goal
 
-		ARTIFACT = :MutualCancellationArtifact
+		ARTIFACT = :MutualCancellationRequestArtifact
 		EXPIRATION = nil 
 		CHILDREN = []
 		FAVORITE_CHILD = false 
@@ -252,56 +376,59 @@ module Contracts::Bet
 		AVAILABLE_TO = [:Party1, :Party2]
 		DESCRIPTION = "Cancel (with other party's approval)"
 		SELF_PROVISION = false
+		STUBBORN = true
 
 		def execute(artifact)
 			
 			have_cancellation = false
 
-			requests = self.tranzaction.model_instances(:MutualCancellationArtifact)
+			requests = self.tranzaction.model_instances(:MutualCancellationRequestArtifact)
 			confirmations = {}
-			confirmations[:Party1] = [nil, false]
-			confirmations[:Party2] = [nil, false]
+			confirmations[:Party1] = false
+			confirmations[:Party2] = false
+			confirmations[:PartyAdmin] = false
 
 			requests.each do |request|
-				confirmations[:Party1] = [request, true] \
-					if request.origin == :Party1 and request.counted == false
-				confirmations[:Party2] = [request, true] \
-					if request.origin == :Party2 and request.counted == false
+				origin_sym = request.origin.to_symbol()
+				confirmations[origin_sym] = true unless request.counted
 			end
 
-			requester = tranzaction.latest_model_instance(:MutualCancellationArtifact).origin
-			requester = tranzaction.model_instance(requester).contact.user
+			origin_sym = self.tranzaction.latest_model_instance(:MutualCancellationRequestArtifact)\
+				.to_symbol()
+			requester = ((origin_sym == :Party1)\
+				? self.tranzaction.party1\
+				: self.tranzaction.party2
+			).user
+
 			msg = "\n\n#{requester.first_name} #{requester.last_name} has requested cancellation."
-			Rails.logger.info(msg)
 
-			if confirmations[:Party1][1] and confirmations[:Party2][1] then 
+			p1 = self.tranzaction.party1
+			p2 = self.tranzaction.party2
 
-				# We have the consent of both.  Create an Artifact to that effect
+			if (confirmations[:Party1] and confirmations[:Party2]) then 
+			
+				# We have the consent of both.  Create an Artifact (on the fly) to that effect
 				# and disable transaction. 
-				# Also, mark all three artifacts as counted
 				cancellation = self.tranzaction.namespaced_class(:MutualCancellationArtifact).new()
 				cancellation.tranzaction_id = self.tranzaction_id
 				cancellation.goal_id = self.id
-				cancellation.origin = :PartyAdmin
-				cancellation.counted = true
 				cancellation.save!
-
-				confirmations[:Party1][0].counted = true
-				confirmations[:Party1][0].save!
-				confirmations[:Party2][0].counted = true
-				confirmations[:Party2][0].save!
-
 				cancel_tranzaction()
 
 				msg2 = "Transaction cancelled by mutual agreement."
-				Rails.logger.info(msg2)
+				self.tranzaction.flash_party(p1, msg2)
+				self.tranzaction.flash_party(p2, msg2)
+
+				# Mark all these as 'counted' in case this tranzaction is resurrected
+				requests.each do |request|
+					request.counted = true
+				end
 
 				have_cancellation = true
 			else
-				self.state = :s_provisioning
-				self.save!
-				self.start
 				have_cancellation = false 
+				self.tranzaction.flash_party(p1, msg)
+				self.tranzaction.flash_party(p2, msg)
 			end
 
 			have_cancellation	
@@ -317,12 +444,53 @@ module Contracts::Bet
 		end
 	end
 
-	class MutualCancellationArtifact < ProvisionableArtifact
-		# Origin should be a Symbol, like ':Party1'
+	class MutualCancellationRequestArtifact < ProvisionableArtifact
 		PARAMS = {\
-			origin: :Party1,
 			counted: false
 		}
+
+		def status_description_for(user)
+			desc = lookup_description_template(
+				:ARTIFACT_STATUS_MAP,
+				:default
+			)
+			desc = substitute_user(
+				desc, user,
+				self.origin, '%ORIGIN%'
+			)
+		end
+
+		def action_description_for(user)
+			desc = lookup_description_template(
+				:ARTIFACT_ACTION_MAP,
+				:default
+			)
+			desc = substitute_user(
+				desc, user,
+				self.origin, '%ORIGIN%'
+			)
+		end
+	end
+
+	class MutualCancellationArtifact < ProvisionableArtifact
+		before_save do
+			self.origin = self.tranzaction.house
+		end
+		PARAMS = {}
+
+		def status_description_for(user)
+			desc = lookup_description_template(
+				:ARTIFACT_STATUS_MAP,
+				:default
+			)
+		end
+
+		def action_description_for(user)
+			desc = lookup_description_template(
+				:ARTIFACT_ACTION_MAP,
+				:default
+			)
+		end
 	end
 
 	#########################################################################
@@ -340,23 +508,29 @@ module Contracts::Bet
 		STEPCHILDREN = [:GoalMutualCancellation]
 		AVAILABLE_TO = [:Party1, :Party2]
 		DESCRIPTION = "Indicate the Winner"
+		SELF_PROVISION = false
+		STUBBORN = true 
 
 		def execute(artifact)
-			origin, winner = winner(artifact)
-			if !(winner.nil?) then
+
+			have_a_winner = artifact.have_a_winner?
+			if (have_a_winner) then
 				
+				winner_sym = artifact.winner.to_sym
+
 				# Create new Artifact with origin administrator 
-				new_artifact = OutcomeAssertionArtifact.new()
+				new_artifact = OutcomeFinalArtifact.new()
+				new_artifact.goal = self
 				new_artifact.tranzaction = self.tranzaction
-				new_artifact.winner = winner
-				new_artifact.origin = :PartyAdmin
+				new_artifact.winner = winner_sym 
+				new_artifact.origin = self.tranzaction.house() 
 				new_artifact.save!
 
 				# Dispense bet monies
-				to_release = (winner == :Party1)\
+				to_release = (winner_sym == :Party1)\
 					? self.tranzaction.party1_bet \
 					: self.tranzaction.party2_bet 
-				to_transfer = (winner == :Party1)\
+				to_transfer = (winner_sym == :Party1)\
 					? self.tranzaction.party2_bet : self.tranzaction.party1_bet 
 
 				to_transfer.disposition = to_release.origin 
@@ -364,10 +538,10 @@ module Contracts::Bet
 				to_transfer.transfer
 
 				# Dispense fees.  Winner pays the house.
-				to_release = (winner == :Party1)\
+				to_release = (winner_sym == :Party1)\
 					? self.tranzaction.party2_fees\
 					: self.tranzaction.party1_fees
-				to_transfer = (winner == :Party1)\
+				to_transfer = (winner_sym == :Party1)\
 					? self.tranzaction.party1_fees\
 					: self.tranzaction.party2_fees 
 				to_transfer.disposition = self.tranzaction.house() 
@@ -378,7 +552,7 @@ module Contracts::Bet
 				# We're done.  Disable all goals.
 				self.tranzaction.disable_active_goals(self)
 
-				user = tranzaction.model_instance(artifact.winner).contact.user
+				user = self.tranzaction.symbol_to_party(artifact.winner).user
 				msg = "#{user.first_name} #{user.last_name} wins.  Transaction closed."
 				p1 = self.tranzaction.party1
 				p2 = self.tranzaction.party2
@@ -386,19 +560,16 @@ module Contracts::Bet
 				self.tranzaction.flash_party(p2, msg)
 			else
 				# Restart this Goal
-				self.state = :s_initial
-				self.save!
-				self.start
-				origin = tranzaction.model_instance(origin.to_sym).contact.user
-				msg = "#{origin.first_name} #{origin.last_name} " \
-					+ "asserts that #{origin.first_name} #{origin.last_name} won."
+				msg = "#{artifact.origin.user.first_name} #{artifact.origin.user.last_name} " \
+					+ "asserts that #{artifact.origin.user.first_name} "\
+					+ "#{artifact.origin.user.last_name} won."
 				p1 = self.tranzaction.party1
 				p2 = self.tranzaction.party2
 				self.tranzaction.flash_party(p1, msg)
 				self.tranzaction.flash_party(p2, msg)
 			end
 
-			!winner.nil?	
+			have_a_winner	
 		end
 
 		# TODO: implement 
@@ -413,23 +584,118 @@ module Contracts::Bet
 			true
 		end
 
-		private
-			def winner(artifact)
-				return (artifact.origin == :Party1) ^ (artifact.winner == :Party1)\
-					? [artifact.origin, artifact.winner]\
-					: [artifact.origin, nil]
-			end
 	end
 
 	class OutcomeAssertionArtifact < ProvisionableArtifact
-		PARAMS = {origin: nil, winner: nil}
+		PARAMS = {winner: nil}
 		IMMUTABLE = true
-		before_save do
-			self.origin = self.origin.to_sym unless self.origin.nil?
-			self.winner = self.winner.to_sym unless self.winner.nil?
+
+		def subclass_init(instance, party)
+			self.winner = party.to_symbol()
+		end
+
+		def have_a_winner?()
+			op = nil
+			if self.arrogant?() then
+				op = :modest?	
+			else
+				op = :arrogant?
+			end
+
+			type = self.class.to_s
+			artifacts = self.tranzaction.artifacts.where{self.type == type} 
+			artifacts.each do |artifact|
+				return true if artifact.send(op)
+			end
+			false
+		end
+
+		def modest?()
+			outcome = (
+				(self.origin.to_symbol() == :Party1)\
+				^\
+				(self.winner.to_sym == :Party1)
+			)
+		end
+
+		def arrogant?()
+			party_sym = self.winner.to_sym
+			outcome = (
+				(self.origin.to_symbol() == party_sym)\
+				&&	
+				(self.winner.to_sym == party_sym)\
+			)
+		end
+
+		def status_description_for(user)
+			desc = lookup_description_template(
+				:ARTIFACT_STATUS_MAP,
+				:default
+			)
+			desc = substitute_user(
+				desc, user, self.origin, '%ORIGIN%'
+			)
+			desc = substitute_user(
+				desc, user,
+				self.tranzaction.symbol_to_party(self.winner), '%WINNER%'
+			)
+		end
+
+		def action_description_for(user)
+			desc = lookup_description_template(
+				:ARTIFACT_ACTION_MAP,
+				self.originator?(user) ? :waiting : :requested
+			)
+			desc = substitute_user(
+				desc, user,
+				self.tranzaction.symbol_to_party(self.winner), '%WINNER%'
+			)
+		end
+
+		def confirmation_description_for(user)
+			desc = lookup_description_template(
+				:ARTIFACT_ACTION_MAP,
+				:requested
+			)
+puts "substitute_user(#{desc}, #{self.winner}, #{user}, '%WINNER%')"
+			desc = substitute_user(
+				desc, self.tranzaction.symbol_to_party(self.winner).user,
+				self.tranzaction.party_for(user), '%WINNER%'
+			)
 		end
 	end
 
+	#
+	# This is created directly by GoalDeclareWinner
+	#
+	class OutcomeFinalArtifact < ProvisionableArtifact
+		PARAMS = {winner: nil}
+		IMMUTABLE = true
+
+		def status_description_for(user)
+			desc = lookup_description_template(
+				:ARTIFACT_STATUS_MAP,
+				:default
+			)
+			desc = substitute_user(
+				desc, user,
+				self.tranzaction.symbol_to_party(self.winner), '%WINNER%'
+			)
+		end
+
+		def action_description_for(user)
+			desc = lookup_description_template(
+				:ARTIFACT_ACTION_MAP,
+				(self.tranzaction.symbol_to_party(self.winner) == self.tranzaction.party_for(user))\
+					? :arrogant : :modest
+			)
+			desc = substitute_user(
+				desc, user,
+				self.tranzaction.symbol_to_party(self.winner), '%WINNER%'
+			)
+		end
+
+	end
 	class BetExpiration < Expiration
 		DEFAULT_OFFSET = 48 
 		DEFAULT_OFFSET_UNITS = :hours
@@ -438,5 +704,19 @@ module Contracts::Bet
 	end
 
 	class BetExpirationArtifact < ExpiringArtifact
+		def status_description_for(user)
+			desc = lookup_description_template(
+				:ARTIFACT_STATUS_MAP,
+				:default
+			)
+		end
+
+		def action_description_for(user)
+			desc = lookup_description_template(
+				:ARTIFACT_ACTION_MAP,
+				:default
+			)
+		end
 	end
+
 end

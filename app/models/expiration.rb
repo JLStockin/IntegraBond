@@ -49,9 +49,10 @@ class Expiration < ActiveRecord::Base
 			unless goal.nil? then
 				if goal.can_expire? then
 					goal.transaction do
-						artifact = expiration.tranzaction.create_artifact_for(expiration)
-						artifact.save!
-						goal.expire(artifact)
+						artifact = expiration.tranzaction.create_artifact_for(
+							expiration,
+							goal.tranzaction.house
+						)
 					end
 				end
 			end

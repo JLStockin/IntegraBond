@@ -47,15 +47,15 @@ module TranzactionsHelper
 
 	#
 	# Get the appropriate partial named by partial, for the Contract type
-	# obtained from obj, from the immediate parent directory 'directory'
+	# obtained from obj, from the immediate parent directory 'parent_directory'
 	#
-	def partial_for(obj, partial, parent)
+	def partial_for(obj, partial, parent_directory)
 		tmp = obj.class.to_s.split('::')
 		klass_sym = tmp[-1] # e.g, 'OfferArtifact'
 		contract_sym = tmp[-2] # e.g, 'Bet'
 		path = nil
-		if (parent != '') then
-			path = "contract_views/#{contract_sym.underscore}/#{parent}/#{klass_sym.underscore}"
+		if (parent_directory != '') then
+			path = "contract_views/#{contract_sym.underscore}/#{parent_directory}/#{klass_sym.underscore}"
 			# e.g, contract_views/bet/artifacts/OfferArtifact
 		else
 			path = "contract_views/#{contract_sym.underscore}/"

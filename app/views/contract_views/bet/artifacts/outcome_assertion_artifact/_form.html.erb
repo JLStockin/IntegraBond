@@ -1,40 +1,44 @@
 <%= form_for(@artifact, url: goal_artifacts_path(@goal)) do |f| %>
 	<fieldset>
 		<h3>Declare a winner</h3>
-		<div class="field">I lost
-				<%=
-					f.radio_button(
-						:winner,
-						@goal.tranzaction.other_party_sym(
-							ActiveRecord::Base::const_to_symbol(
-								@goal.tranzaction.party_for(current_user).class
-							)
-						).to_s
-					)
-				%>
-		</div>
-		<div class="field">I Won 
-				<%=
-					f.radio_button(
-						:winner,
-						ActiveRecord::Base::const_to_symbol(
-							@goal.tranzaction.party_for(current_user).class
-						).to_s,
-						checked: true
-					)
-				%>
-		</div>
-		<%= 
-			f.hidden_field(
-				:origin,
-				:value =>
-					ActiveRecord::Base::const_to_symbol(
-						@goal.tranzaction.party_for(current_user).class
-					).to_s
+		<%= render(
+				partial_for(@artifact.tranzaction, 'read_only', ''),
+				:tranzaction => @artifact.tranzaction
 			)
 		%>
-		<div class="actions">
-			<%= f.submit "Declare/Affirm" %>
+		<div class="field">
+			<% name = @goal.tranzaction.other_party_for(current_user).to_symbol() %>
+			<% label = @artifact.confirmation_description_for(
+					@goal.tranzaction.other_party_for(current_user).user
+			) %>
+			<% checked = \
+				@goal.tranzaction.other_party_for(current_user).to_symbol() == @artifact.winner %>
+			<%= 
+				f.radio_button(
+					:winner,
+					name,
+					checked: checked
+				)
+			%>
+			<%= f.label :winner, label, :value => name %>
 		</div>
+		<div class="field">
+			<% name = @goal.tranzaction.party_for(current_user).to_symbol() %>
+			<% label = @artifact.confirmation_description_for(current_user) %>
+			<% checked = @goal.tranzaction.party_for(current_user).to_symbol() == @artifact.winner %>
+			<%=
+				f.radio_button(
+					:winner,
+					name,	
+					checked: checked
+				)
+			%>
+			<%= f.label :winner, label, :value => name %>
+		</div>
+		<div class="actions">
+			<%= f.submit "Declare/Confirm" %>
+			<%= f.submit "Back", :name => "previous_button" %>
+		</div>
+		<%= hidden_field_tag :origin, @artifact.tranzaction.party_for(current_user()) %>
 	</fieldset>
 <% end %>

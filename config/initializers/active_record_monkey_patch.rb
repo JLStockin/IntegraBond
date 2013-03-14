@@ -104,6 +104,10 @@ ActiveRecord::Base.class_eval do
 		(name.to_s.split('::')[-1]).to_sym
 	end
 
+	def to_symbol()
+		self.class.const_to_symbol(self.class)
+	end
+
 	#
 	# Determine if a constant of this name is defined in 'self's namespace
 	#

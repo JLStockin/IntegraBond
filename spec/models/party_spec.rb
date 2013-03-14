@@ -97,6 +97,11 @@ describe "Party resolution" do
 
 	describe "attribute accessors" do
 
+		it "should convert party to a symbol" do
+			party = resolve_party(@tranz, :Party2)
+			party.to_symbol.should be == :Party2
+		end
+
 		describe "used to map contact type to index" do
 
 			it "should have a find_type_index method" do

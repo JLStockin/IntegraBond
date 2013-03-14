@@ -116,6 +116,11 @@ describe Contracts::Bet::TestArtifact do
 			@artifact.class.const_to_symbol(Contracts::Bet::Friend).should be == :Friend
 		end
 
+		it "should have a working to_symbol() instance method" do
+			@artifact.should respond_to :to_symbol
+			@artifact.to_symbol().should be == :TestArtifact
+		end
+
 		it "should have a working valid_constant? class method" do
 			@artifact.class.should respond_to :valid_constant?
 			@artifact.class.valid_constant?(:A_CONSTANT).should be_true	

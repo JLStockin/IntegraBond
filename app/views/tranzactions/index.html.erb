@@ -14,14 +14,14 @@
 			<% end %>
 		</tr>
 
-		<% @tranzactions.each_pair do |trans, parties| %>
+		<% @tranzactions.each_pair do |tranz, parties| %>
 			<tr>
 				<td>
-					<%= link_to "#{trans.status_for(current_user)}", 
-						trans.editing? ? edit_tranzaction_path(trans) : tranzaction_path(trans)
+					<%= link_to "#{tranz.latest_artifact.action_description_for(current_user)}", 
+							tranz.editing? ? edit_tranzaction_path(tranz) : tranzaction_path(tranz)
 					%>
 				</td>
-				<td><%= trans.class.contract_name %></td>
+				<td><%= tranz.class.contract_name %></td>
 				<% @party_classes.each do |klass| %>
 					<% if parties[klass].nil? then %>
 						<td>-</td>

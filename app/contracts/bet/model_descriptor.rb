@@ -8,77 +8,75 @@ class Contracts::Bet::ModelDescriptor < ModelDescriptor
 	SITE_NAME = "IntegraBond"
 
 	#
-	# Transaction status
+	# Artifact is the last Goal's artifact, and it tells us what happened.
 	#
-	def self.status_for(tranzaction, user)
-		party = ActiveRecord::Base.const_to_symbol(tranzaction.party_for(user).class)
-		klass_or_artifact = tranzaction.status_object()
-		status = "Error"
-		if klass_or_artifact.is_a?(Artifact) then
-			status = STATUS_ARTIFACT_OBJECT_MAP[\
-				ActiveRecord::Base.const_to_symbol(klass_or_artifact.class)\
-			]
-		elsif klass_or_artifact.is_a?(Symbol) then
-			status = STATUS_ARTIFACT_SYMBOL_MAP[party][klass_or_artifact]
-		end
-		status ||= "Error: #{klass_or_artifact.to_s} couldn't be mapped"
-	end
-
-	# Lookup table: summarize most likely step for given Tranzaction and User
-	#
-	# We don't have active Goals.  Artifact is the last Goal's artifact, and it tells us
-	# what happened.
-	#
-	STATUS_ARTIFACT_OBJECT_MAP = {
-		:OfferPresentedArtifact			=> "Offer presented",
-		:OfferAcceptedArtifact			=> "Offer accepted",
-		:OfferExpirationArtifact		=> "Offer expired",
-		:OfferWithdrawnArtifact			=> "Offer withdrawn",
-		:OutcomeAssertionArtifact		=> "Completed",
-		:MutualCancellationArtifact		=> "Mutual cancel",
-		:OfferRejectedArtifact			=> "Offer rejected",
-		:TermsArtifact					=> "Incomplete",
-		:BetExpirationArtifact			=> "Expired (no results)"
+	ARTIFACT_STATUS_MAP = {
+		:TermsArtifact					=> { default: "Editing (incomplete)"},
+		:OfferPresentedArtifact			=> { default: "%ORIGIN% presented offer"},
+		:OfferAcceptedArtifact			=> { default: "%ORIGIN% accepted offer"},
+		:OfferWithdrawnArtifact			=> { default: "%ORIGIN% withdrew offer"},
+		:OutcomeAssertionArtifact		=> { default: "%ORIGIN% asserted that %WINNER% won"},
+		:OutcomeFinalArtifact			=> { default: "%WINNER% won"},
+		:MutualCancellationRequestArtifact	=> { default: "%ORIGIN% requested cancel"},
+		:MutualCancellationArtifact		=> { default: "Cancelled"},
+		:OfferRejectedArtifact			=> { default: "%ORIGIN% rejected offer"},
+		:OfferExpirationArtifact		=> { default: "Offer expired"},
+		:BetExpirationArtifact			=> { default: "Expired (no results)"}
 	}
 
-	# Lookup table: summarize most likely step for given Tranzaction and User
-	#
-	# We've got active goals.  Presumably, we want to succeed, so the Contract's
-	# current_success_goal()'s artifact tells us what should happen next
-	#
-	STATUS_ARTIFACT_SYMBOL_MAP = {
-		Party1: {
-			:OfferPresentedArtifact			=> "Incomplete",
-			:OfferAcceptedArtifact			=> "Waiting",
-			:OfferExpirationArtifact		=> "Error",	# error: this isn't on the success path
-			:OfferWithdrawlArtifact			=> "Error",	# error: this isn't on the success path
-			:OutcomeAssertionArtifact		=> "Attention Required",
-			:MutualCancellationArtifact		=> "Error",	# error: this isn't on the success path
-			:OfferRejectedArtifact			=> "Error",	# error: this isn't on the success path
-			:BetExpirationArtifact			=> "Error"	# error: this isn't on the success path
-		},
-		Party2: {
-			:OfferPresentedArtifact			=> "Error",	# 2nd Party shouldn't have entered yet
-			:OfferAcceptedArtifact			=> "Attention Required",
-			:OfferExpirationArtifact		=> "Error",	# error: this isn't on the success path
-			:OfferWithdrawlArtifact			=> "Error",	# error: this isn't on the success path
-			:OutcomeAssertionArtifact		=> "Attention Required",
-			:MutualCancellationArtifact		=> "Error",	# error: this isn't on the success path
-			:OfferRejectedArtifact			=> "Error",	# error: this isn't on the success path
-			:BetExpirationArtifact			=> "Error"	# error: this isn't on the success path
-		},
+	IDENTITY_MAPPINGS = {
+		:you								=> 'you',
+		:other								=> '%FIRSTNAME% %LASTNAME%' 
 	}
 
-	ARTIFACT_DESCRIPTIONS = {
-		:TermsArtifact				=> "Offer saved",
-		:OfferWithdrawnArtifact		=> "Offer withdrawn",
-		:OfferAcceptedArtifact		=> "Offer accepted!",
-		:OfferRejectedArtifact		=> "Offer rejected",
-		:OfferExpiredArtifact		=> "Offer expired",
-		:BetExpiredArtifact			=> "Bet expired",
-		:MutualCancellationArtifact	=> "Cancellation requested",
-		:OutcomeAssertionArtifact	=> "Winner claimed",
-		:OtherPartyNotFoundArtifact => "Other party couldn't be identified"
+	#
+	# This table tells us whose turn it is.  %STATUS% should be replaced with the appropriate status:
+	# 'Waiting', 'Attention required', 'Pick a winner', etc.
+	#
+	ARTIFACT_ACTION_MAP = {
+		:TermsArtifact => {
+			waiting: 	"Waiting",
+			required: 	"Editing (incomplete)"
+		},
+		:OfferPresentedArtifact => {
+			waiting: 	"Waiting",
+			required: 	"Input required"
+		},
+		:OfferAcceptedArtifact => {
+			waiting: 	"Ready to indicate winner?",
+			requested: 	"Ready to indicate winner?"
+		},
+		:OfferExpirationArtifact => {
+			default: 	"Expired"
+		},
+		:OfferWithdrawnArtifact => {
+			default: 	"Cancelled"
+		},
+		:OutcomeAssertionArtifact => {
+			waiting: 	"Seeking confirmation %WINNER% won",
+			requested: 	"Please confirm %WINNER% won"
+		},
+		:OutcomeFinalArtifact => {
+			modest: 	"%WINNER% won",
+			arrogant:	"%WINNER% won"
+		},
+		:MutualCancellationRequestArtifact => {
+			default: 	"Cancel? (%ORIGIN%)"
+		},
+		:MutualCancellationArtifact => {
+			default:	"Cancelled (mutual)"
+		},
+		:OfferRejectedArtifact => {
+			default: 	"Declined by %ORIGIN%"
+		},
+		:BetExpirationArtifact => {
+			default: 	"Expired"
+		}
+	}
+
+	ID_MAPPINGS = {
+		:you				=> 	'you',
+		:other				=>  '%FIRSTNAME% %LASTNAME%'
 	}
 
 	VALUABLE_DESCRIPTIONS = {
@@ -90,7 +88,7 @@ class Contracts::Bet::ModelDescriptor < ModelDescriptor
 
 	GOAL_DESCRIPTIONS = {
 		:GoalTenderOffer			=> "Create",
-		:GoalCancelOffer			=> "Retract",
+		:GoalWithdrawOffer			=> "Withdraw",
 		:GoalAcceptOffer			=> "Accept",
 		:GoalRejectOffer			=> "Decline",
 		:GoalMutualCancellation		=> "Cancel (by mutual agreement)",
@@ -107,12 +105,11 @@ class Contracts::Bet::ModelDescriptor < ModelDescriptor
 		:BetExpiration				=> "Outcome to be confirmed no later than: "
 	}
 
+	# TODO move these next two to ActiveRecord::Base
 	def self.goal(goal)
-		GOAL_DESCRIPTIONS[goal.class.to_sym]
-	end
-
-	def self.artifact(artifact)
-		ARTIFACT_DESCRIPTIONS[artifact.class.to_sym]
+		ret = GOAL_DESCRIPTIONS[goal.to_symbol]
+		raise "missing description entry for goal: #{goal.to_symbol}" unless ret
+		ret
 	end
 
 	def self.contract_objective()

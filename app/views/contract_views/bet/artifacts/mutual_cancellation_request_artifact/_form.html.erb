@@ -1,0 +1,13 @@
+<%= form_for(@artifact, url: goal_artifacts_path(@goal)) do |f| %>
+	<fieldset>
+		<h3>Cancel this bet (if agreed upon by other party)?</h3>
+		<%= render(partial_for(@artifact.tranzaction, 'read_only', ''),
+				:tranzaction => @artifact.tranzaction)
+		%>
+		<div class="actions">
+			<%= f.submit "Request" %>
+			<%= f.submit "Back", :name => "previous_button" %>
+		</div>
+		<%= hidden_field_tag :origin, @artifact.tranzaction.party_for(current_user()) %>
+	</fieldset>
+<% end %>

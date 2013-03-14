@@ -27,8 +27,9 @@ class ArtifactsController < ApplicationController
 	# GET /goals/:goal_id/artifacts/new
 	def new 
 		@goal = Goal.find(params[:goal_id])
-		tranzaction = @goal.tranzaction
-		@artifact = tranzaction.build_artifact_for(@goal)
+		@tranzaction = @goal.tranzaction
+		party = @tranzaction.party_for(current_user)
+		@artifact = @tranzaction.build_artifact_for(@goal, party)
 		respond_to do |format|
 			format.html # new.html.erb
 			format.json { render json: @artifact }
@@ -39,16 +40,19 @@ class ArtifactsController < ApplicationController
 	def create
 		(redirect_to tranzactions_path and return) if params[:previous_button]
 
-		@goal = Goal.find(params[:goal_id])
-		tranzaction = @goal.tranzaction
-		artifact = tranzaction.build_artifact_for(@goal) 
-		param_key = model_object_to_params_key(artifact)
-		new_params = params[param_key]
+		goal = Goal.find(params[:goal_id])
+		tranzaction = goal.tranzaction
+		party = tranzaction.party_for(current_user)
+		artifact = tranzaction.build_artifact_for(goal, party)
+
+		new_params = params[model_object_to_params_key(artifact)]
 		artifact.mass_assign_params(new_params)
+
 		artifact.save!
 		artifact.fire_goal()
 
-		redirect_to tranzactions_path, :notice => artifact.creation_message() 
+		redirect_to tranzactions_path,
+			:notice => artifact.status_description_for(current_user()) 
 	end
 
 end

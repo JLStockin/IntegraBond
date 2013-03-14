@@ -2,6 +2,7 @@ require 'spec_helper'
 require 'active_support/time'
 
 TEST_GOAL = Contracts::Bet::TestGoal
+TEST_GOAL_FALSE = Contracts::Bet::TestGoalFalse
 GOAL = Contracts::Bet::GoalTenderOffer
 #GOAL_CHILDREN = [:GoalAcceptOffer, :GoalCancelOffer]
 Contracts::Bet::GoalTenderOffer::EXPIRATION = :TestExpiration 
@@ -78,13 +79,8 @@ describe "Goal in active Tranzaction" do
 
 	before(:each) do
 		@tranz = prepare_test_tranzaction(Contracts::Bet::ContractBet) 
-		@tranz.start(false)
+		@tranz.start(true)
 		@goal = @tranz.goals[0]
-		class BogusGoal < Goal
-		end
-		@bogus = BogusGoal.new()
-		@bogus.tranzaction = @tranz
-		@bogus.save!
 	end
 
 	describe "asked to start" do
@@ -128,14 +124,14 @@ describe "Goal in active Tranzaction" do
 		end
 
 		it "should produce the right Artifact (create_artifact_for)" do
-			@artifact = @tranz.create_artifact_for(@expiration) 
+			@artifact = @tranz.create_artifact_for(@expiration, @tranz.party1) 
 			@artifact.should_not be_nil
 			@artifact.instance_of?(EXPIRATION_ARTIFACT).should be_true
 		end
 
 		it "should disable Goal" do
 			@goal.active?.should be_true
-			@artifact = @tranz.create_artifact_for(@expiration) 
+			@artifact = @tranz.create_artifact_for(@expiration, @tranz.party1) 
 			@goal.reload
 			@goal.active?.should be_false
 		end
@@ -146,7 +142,7 @@ describe "Goal in active Tranzaction" do
 		it "should no longer be active" do
 			@goal.start()
 			@goal.active?.should be_true
-			artifact = @tranz.create_artifact_for(@goal) 
+			artifact = @tranz.create_artifact_for(@goal, @tranz.party1) 
 			artifact.should_not be_nil
 			@goal.reload
 			@goal.active?.should be_false
@@ -156,22 +152,90 @@ describe "Goal in active Tranzaction" do
 			account = @tranz.party1.contact.user.account
 			account.available_funds.should be == Money.parse("$1000")	
 			@goal.start()
-			artifact = @tranz.create_artifact_for(@goal) 
+			artifact = @tranz.create_artifact_for(@goal, @tranz.party1) 
 			account.reload()
 			account.available_funds.should be < Money.parse("$1000")	
 		end
+
+		it "should not raise an exception if execute returns true" do
+			@goal.class.class_eval do
+				def execute(artifact)
+					return true 
+				end
+			end
+			@goal.start()
+			artifact = @tranz.build_artifact_for(@goal) 
+			artifact.save!
+			expect {@goal.provision(artifact)}.to_not raise_error
+		end
+
+		it "should not raise an exception if execute returns false" do
+			@goal.class.class_eval do
+				def execute(artifact)
+					return false
+				end
+			end
+			@goal.start()
+			artifact = @tranz.build_artifact_for(@goal) 
+			artifact.save!
+			expect {@goal.provision(artifact)}.to_not raise_error
+		end
 	end
 
-	describe "when provisioned with bad args" do
-		it "should throw an exception" do
-			expect {@goal.start(:widget => true)}.to raise_error
+	describe "when provision!'d" do
+
+		it "should not raise an exception if execute returns true" do
+			@goal.class.class_eval do
+				def execute(artifact)
+					return true 
+				end
+			end
+			@goal.start!()
+			artifact = @tranz.build_artifact_for(@goal) 
+			artifact.save!
+			expect {@goal.provision!(artifact)}.to_not raise_error
 		end
+
+		it "should raise an exception if execute returns false" do
+			@goal.class.class_eval do
+				def execute(artifact)
+					return false
+				end
+			end
+			@goal.class.const_set("STUBBORN", false)
+			@goal.start()
+			artifact = @tranz.build_artifact_for(@goal) 
+			artifact.save!
+			expect {@goal.provision!(artifact)}.to raise_error
+		end
+
+		it "should not raise an exception even if execute returns false if goal is stubborn" do
+			@goal.class.class_eval do
+				def execute(artifact)
+					return false
+				end
+			end
+			@goal.class.const_set("STUBBORN", true)
+			@goal.start()
+			artifact = @tranz.build_artifact_for(@goal) 
+			artifact.save!
+			expect {@goal.provision!(artifact)}.to_not raise_error
+		end
+
+		it "(should cleanup after itself)" do
+			@goal.class.class_eval do
+				def execute(artifact)
+					return true 
+				end
+			end
+		end
+
 	end
 
 	describe "child Goals" do
 		before(:each) do
 			@goal.start()
-			artifact = @tranz.create_artifact_for(@goal) 
+			artifact = @tranz.create_artifact_for(@goal, @tranz.party1) 
 			@goal.reload
 		end
 			
@@ -210,7 +274,7 @@ describe "Goal in active Tranzaction" do
 		p1 = @tranz.party1
 		account = p1.contact.user.account
 		account.available_funds.should be == Money.parse("$1000")	
-		@tranz.create_artifact_for(@goal) 
+		@tranz.create_artifact_for(@goal, @tranz.party1) 
 		account.reload
 		account.available_funds.should be < Money.parse("$1000")	
 		@goal.reload
@@ -221,12 +285,6 @@ describe "Goal in active Tranzaction" do
 		@goal.active?.should be_false
 	end
 
-	it "should complain if execute() isn't implemented in Goal subclass" do
-		expect {
-			@bogus.execute(nil)
-		}.to raise_error
-	end
-
 	it "should call subclassed Goal's execute() on provision event" do
 		$executed = false
 		def @goal.execute(artifact)
@@ -235,14 +293,8 @@ describe "Goal in active Tranzaction" do
 		end
 
 		@goal.start()
-		@tranz.create_artifact_for(@goal) 
+		@tranz.create_artifact_for(@goal, @tranz.party1) 
 		$executed.should be_true
-	end
-
-	it "should complain if reverse_execution() isn't implemented in Goal subclass" do
-		expect {
-			@bogus.reverse_execution(nil)
-		}.to raise_error
 	end
 
 	it "should call reverse_execution() on undo event" do
@@ -253,16 +305,10 @@ describe "Goal in active Tranzaction" do
 		end
 
 		@goal.start()
-		@tranz.create_artifact_for(@goal) 
+		@tranz.create_artifact_for(@goal, @tranz.party1) 
 		@goal.reload
 		@goal.undo!()
 		$reversed.should be_true
-	end
-
-	it "should complain if on_expire() isn't implemented in Goal subclass" do
-		expect {
-			@bogus.on_expire(nil)
-		}.to raise_error
 	end
 
 	it "should call Goal subclass's on_expire() on the expire event" do
@@ -281,6 +327,35 @@ describe "Goal in active Tranzaction" do
 		sleep(2)
 		Expiration.sweep()
 		$expired.should be_true
+	end
+end
+
+describe "Goal (re: missing callbacks)" do
+	before(:each) do
+		@tranz = prepare_test_tranzaction(Contracts::Bet::ContractBet) 
+		class BogusGoal < Goal
+		end
+		@bogus = BogusGoal.new()
+		@bogus.tranzaction = @tranz
+		@bogus.save!
+	end
+
+	it "should complain if execute() isn't implemented in Goal subclass" do
+		expect {
+			@bogus.execute(nil)
+		}.to raise_error
+	end
+
+	it "should complain if reverse_execution() isn't implemented in Goal subclass" do
+		expect {
+			@bogus.reverse_execution(nil)
+		}.to raise_error
+	end
+
+	it "should complain if on_expire() isn't implemented in Goal subclass" do
+		expect {
+			@bogus.on_expire(nil)
+		}.to raise_error
 	end
 
 end

@@ -1,6 +1,9 @@
 <%= form_for(@artifact, url: goal_artifacts_path(@goal)) do |f| %>
 	<fieldset>
 		<h3>Accept this bet?</h3>
+		<%= render(
+				partial_for(@artifact.tranzaction, 'read_only', ''),
+				:tranzaction => @tranzaction) %>
 		<div class="actions">
 			<%= f.submit "Accept" %>
 			<%= f.submit "Back", :name => "previous_button" %>

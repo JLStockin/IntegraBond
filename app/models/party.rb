@@ -13,6 +13,7 @@ class Party < ActiveRecord::Base
 	has_one		:invitation, dependent: :destroy
 	has_many	:origins, class_name: Valuable, foreign_key: :origin_id
 	has_many	:dispositions, class_name: Valuable, foreign_key: :disposition_id
+	has_one		:user, through: :contact
 
 	scope :parties_for, lambda {|usr| joins{contact}.where{contact.user_id == usr.id}}
 

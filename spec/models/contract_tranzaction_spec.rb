@@ -129,8 +129,8 @@ describe "Tranzaction" do
 	describe "parties" do
 
 		it "should be a method on Contract" do
-			@tranz = prepare_test_tranzaction(Contracts::Bet::ContractBet)
-			@tranz.should respond_to :parties
+			tranz = prepare_test_tranzaction(Contracts::Bet::ContractBet)
+			tranz.should respond_to :parties
 		end
 
 		it_should_behave_like "Party" do
@@ -162,6 +162,23 @@ describe "Tranzaction" do
 			}.to raise_error 
 		end
 
+		it "should convert a symbol to a party (symbol_to_party)" do
+			tranz = prepare_test_tranzaction(Contracts::Bet::ContractBet)
+			party = resolve_party(tranz, :Party2)
+			tranz.symbol_to_party(:Party2).should be == party
+		end
+
+		it "should come up with a party for a user (party_for)" do
+			tranz = prepare_test_tranzaction(Contracts::Bet::ContractBet)
+			party = resolve_party(tranz, :Party2)
+			tranz.party_for(party.contact.user).should be == party
+		end
+
+		it "should come up with a user" do
+			tranz = prepare_test_tranzaction(Contracts::Bet::ContractBet)
+			party = resolve_party(tranz, :Party2)
+			party.user.should be == party.contact.user
+		end
 	end
 
 	describe "valuables" do
@@ -250,13 +267,99 @@ describe "Tranzaction" do
 
 		it "should create a goal" do
 			@tranz.start
-			@tranz.goals.first.type.should be == "Contracts::Bet::GoalTenderOffer"
+			@tranz.goals.select(:type).order(:id).first.type.should\
+				be == "Contracts::Bet::GoalTenderOffer"
 		end
 
 		it "should have associates for a user"
 
 		it "should create Artifacts"
 
+	end
+
+	describe "Decorator methods" do
+		before(:each) do
+			@tranz = prepare_test_tranzaction(Contracts::Bet::ContractBet)
+			resolve_party(@tranz, :Party2)
+			a = Contracts::Bet::OfferPresentedArtifact.new()
+			a.tranzaction = @tranz
+			a.goal = @tranz.model_instance(:GoalTenderOffer)
+			a.origin = @tranz.party1
+			a.save!
+			@user1 = @tranz.party1.contact.user
+			@user2 = @tranz.party2.contact.user
+		end
+
+		it "should print the right title for the first party" do
+			expect(@tranz.title(@user1)).to eq("Bet: $20.00 with Ms Buyer")
+		end
+
+		it "should print the right title for the second party" do
+			expect(@tranz.title(@user2)).to eq("Bet: $20.00 with Mr Seller")
+		end
+
+	end
+
+	describe "Artifact Decorators" do
+		before(:each) do
+			@tranz = prepare_test_tranzaction(Contracts::Bet::ContractBet)
+			resolve_party(@tranz, :Party2)
+
+			@user1 = @tranz.party1.contact.user
+			@user2 = @tranz.party2.contact.user
+
+			@artifact = Contracts::Bet::OfferPresentedArtifact.new()
+			@artifact.tranzaction = @tranz
+			@artifact.goal = @tranz.model_instance(:GoalTenderOffer)
+			@artifact.origin = @tranz.party1
+			@artifact.save!
+		end
+
+		it "should have a lookup_description_template() that works for status" do
+			@artifact.should respond_to :lookup_description_template
+			@artifact.lookup_description_template( :ARTIFACT_STATUS_MAP, :default )\
+				.should be == "%ORIGIN% presented offer"
+		end
+
+		it "should have a lookup_description_template() that works for actions" do
+			@artifact.should respond_to :lookup_description_template
+			@artifact.lookup_description_template( :ARTIFACT_ACTION_MAP, :waiting )\
+				.should be == "Waiting"
+			@artifact.lookup_description_template( :ARTIFACT_ACTION_MAP, :required)\
+				.should be  == "Input required"
+		end
+
+		it "should have a substitute_user() that can display 'You'" do
+			desc = "abc %ORIGIN% def" 
+			@artifact.substitute_user(desc, @user1, @artifact.origin, "%ORIGIN%")\
+				.should be == "abc You def"
+		end
+
+		it "should have a substitute_user() that can display a full name" do
+			desc = "abc %ORIGIN% def"
+			@artifact.substitute_user(desc, @user2, @artifact.origin, "%ORIGIN%")\
+				.should be == "abc Mr Seller def"
+		end
+
+		it "should have a status map for each artifact type" do
+			Contracts::Bet::ModelDescriptor::ARTIFACT_STATUS_MAP.keys.count.should be == 11
+		end
+
+		it "should have an action map for each artifact type" do
+			Contracts::Bet::ModelDescriptor::ARTIFACT_ACTION_MAP.keys.count.should be == 11
+		end
+
+		it "should give a status for each artifact type"
+
+		it "should give the correct status for a representative artifact" do
+			@artifact.status_description_for(@user1).should be == "You presented offer"
+			@artifact.status_description_for(@user2).should be == "Mr Seller presented offer"
+		end
+
+		it "should give the correct action for a representative artifact" do
+			@artifact.action_description_for(@user1).should be == "Waiting"
+			@artifact.action_description_for(@user2).should be == "Input required"
+		end
 	end
 
 	describe "Goal" do
