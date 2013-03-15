@@ -41,25 +41,26 @@ share many common elements:
 
 IntegraBond's architecture allows new contract types to be introduced to
 the running server.  Without a migration of the database schema or a
-database server reboot, the server supports the instantiation of new
+database server reboot, the server can the instantiation of new
 transactions based on the new Contract definition.  In addition to the
-contract definition, additionally, new contracts may require new
-user interface (view level) code.
+contract definition, new contracts may require new user interface
+(view level) code.
 
 State machines
 --------------
 It's my belief that a system capable of managing transactions of
 any complexity needs a state machine.  However, it's been my experience
-that state machines are a terrible way to express or describe the
+that state machines are a terrible way to capture or express the
 business rules contained in a contract.
 
 IntegraBond strives to limit itself to a small set of objects that
 interact in predictable ways.  This has given rise to several object
 types (Ruby classes) that manage their state with their own state
-machines.  Yes: in other words, a contract may contain an arbitrary
+machines.  In other words, a contract may contain an arbitrary
 number of state machines.  A transaction of arbitrary complexity can
 be defined and managed through the interaction of relatively simple
-building blocks, with the benefit of clarifying business rules.
+building blocks, with the benefit of making business rules relatively
+clear.
 
 State of Affairs
 ----------------
@@ -72,6 +73,8 @@ After careful consideration, I've made it public as a way of offering
 interested parties a way to evaluate my coding style and skills (itself
 a sub-goal of wanting to pay my bills.)  At this stage, I would not
 recommend trying to use the code.
+
+Update 3/15/13: it lacks server push and email links, but it demos.
 
 Guide to the code
 -----------------
@@ -94,6 +97,8 @@ ActiveRecord::Base in
 
 	config/initializers/active_record_monkey_patch.rb
 
+Also, app/models/provisionable.rb and app/models/contract.rb contain some
+useful ruby metaprogramming.
 
 A note on terminology
 ---------------------
