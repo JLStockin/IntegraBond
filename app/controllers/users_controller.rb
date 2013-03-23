@@ -58,6 +58,8 @@ class UsersController < ApplicationController
 	end
 
 	def update
+		(redirect_to tranzactions_path and return) if params[:cancel_button]
+
 		@user = current_user()
 		email = params[:user][:email]
 		phone = params[:user][:phone]

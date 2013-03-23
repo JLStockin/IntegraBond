@@ -21,7 +21,7 @@ class PartiesController < ApplicationController
 		@party = Party.find(params[:id].to_i)
 		raise "party not found" if @party.nil?
 
-		unless @party.update_attributes(params) then
+		unless params[:cancel_button] || @party.update_attributes(params) then
 			render 'edit' and return
 		end
 

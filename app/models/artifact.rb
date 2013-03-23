@@ -58,7 +58,6 @@ class Artifact < ActiveRecord::Base
 	end
 
 	def lookup_description_template(table_sym, key) 
-puts "lookup_description_template(#{table_sym}, #{key})"
 		descriptor_class = self.namespaced_class(:ModelDescriptor)
 		table_class = "#{descriptor_class.to_s}::#{table_sym.to_s}".constantize
 
@@ -66,7 +65,6 @@ puts "lookup_description_template(#{table_sym}, #{key})"
 			? nil : self.created_at.to_formatted_s(:long) + " "
 		desc = nil 
 		if table_sym == :ARTIFACT_STATUS_MAP and prefix then
-puts "table_class=#{table_class}, self.to_symbol=#{self.to_symbol}"
 			desc = prefix + table_class[self.to_symbol()][key]
 		else
 			desc = table_class[self.to_symbol][key]
@@ -79,8 +77,6 @@ puts "table_class=#{table_class}, self.to_symbol=#{self.to_symbol}"
 		return s if s.scan(pattern).empty?
 
 		your_party = self.tranzaction.party_for(current_user)
-puts "current_user = #{current_user}"
-puts "substitute_user: your_party=#{your_party}; other_party=#{other_party}"
 		identity = (your_party.id == other_party.id) ? :you : :other
 		s = s.sub(
 			pattern,
