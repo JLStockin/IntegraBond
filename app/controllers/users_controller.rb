@@ -1,13 +1,13 @@
 
 class UsersController < ApplicationController
 	before_filter :authenticate, :except => [:new, :create]
-	before_filter :admin_user, :only => [:index, :destroy]
+	before_filter :admin_user, :only => [:destroy]
 
 	def index
 		@title = "Your Associates"
 		@associates = current_user.admin? \
 			? Contract.all
-			: Contract.tranzaction_associates(current_user())
+			: Contract.associates_for(current_user())
 		# @associates = @associates.paginate(:page => params[:page], :per_page => 10) 
 	end
 

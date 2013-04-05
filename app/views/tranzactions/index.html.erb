@@ -1,7 +1,7 @@
 <h1>Your Transactions</h1>
 
 <% unless @tranzactions.nil? or @tranzactions.empty? then %>
-	<table>
+	<table id="tranzaction_list">
 		<tr>
 			<th>Status</th>
 			<th>Contract</th>
@@ -51,6 +51,8 @@
 <% end %>
 <br />
 
-<%= link_to 'New Offer',
-	ContractManager.contracts.count > 1 ? contracts_path : new_contract_tranzactions_path(0) 
+<%= link_to(
+		'New Offer',
+		ContractManager.contracts.count > 1 ? contracts_path : new_contract_tranzactions_path(0)
+	)
 %>

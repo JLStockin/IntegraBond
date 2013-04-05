@@ -28,11 +28,8 @@ GEM
     activesupport (3.2.3)
       i18n (~> 0.6)
       multi_json (~> 1.0)
-    annotate (2.5.0)
-      rake
+    addressable (2.3.3)
     arel (3.0.2)
-    bootstrap-sass (2.3.0.1)
-      sass (~> 3.2)
     builder (3.0.4)
     coffee-rails (3.2.2)
       coffee-script (>= 2.2.0)
@@ -41,10 +38,17 @@ GEM
       coffee-script-source
       execjs
     coffee-script-source (1.6.1)
+    cookiejar (0.3.0)
     daemons (1.1.9)
     diff-lcs (1.2.1)
-    em-proxy (0.1.8)
-      eventmachine
+    em-http-request (1.0.3)
+      addressable (>= 2.2.3)
+      cookiejar
+      em-socksify
+      eventmachine (>= 1.0.0.beta.4)
+      http_parser.rb (>= 0.5.3)
+    em-socksify (0.2.1)
+      eventmachine (>= 1.0.0.beta.4)
     erubis (2.7.0)
     eventmachine (1.0.1)
     execjs (1.4.0)
@@ -54,14 +58,18 @@ GEM
     factory_girl_rails (4.2.1)
       factory_girl (~> 4.2.0)
       railties (>= 3.0.0)
-    ffi (1.4.0)
+    faye (0.8.9)
+      cookiejar (>= 0.3.0)
+      em-http-request (>= 0.3.0)
+      eventmachine (>= 0.12.0)
+      faye-websocket (>= 0.4.0)
+      rack (>= 1.0.0)
+      yajl-ruby (>= 1.0.0)
+    faye-websocket (0.4.7)
+      eventmachine (>= 0.12.0)
     gravatar_image_tag (1.1.3)
-    heroku-forward (0.3.1)
-      em-proxy (>= 0.1.8)
-      ffi
-      i18n (~> 0.6)
-      spoon (~> 0.0.1)
     hike (1.2.1)
+    http_parser.rb (0.5.3)
     i18n (0.6.4)
     journey (1.0.4)
     jquery-rails (2.2.1)
@@ -81,8 +89,6 @@ GEM
       money (~> 5.0.0)
       railties (~> 3.0)
     multi_json (1.6.1)
-    nokogiri (1.5.6)
-    pg (0.14.1)
     polyamorous (0.5.0)
       activerecord (~> 3.0)
     polyglot (0.3.3)
@@ -127,15 +133,11 @@ GEM
       railties (~> 3.2.0)
       sass (>= 3.1.10)
       tilt (~> 1.3)
-    spoon (0.0.1)
-    spork (1.0.0rc3)
-    spork-rails (3.2.1)
-      rails (>= 3.0.0, < 3.3.0)
-      spork (>= 1.0rc0)
     sprockets (2.1.3)
       hike (~> 1.2)
       rack (~> 1.0)
       tilt (~> 1.1, != 1.3.0)
+    sqlite3 (1.3.7)
     squeel (1.0.17)
       activerecord (~> 3.0)
       activesupport (~> 3.0)
@@ -154,32 +156,23 @@ GEM
     uglifier (1.3.0)
       execjs (>= 0.3.0)
       multi_json (~> 1.0, >= 1.0.2)
-    webrat (0.7.3)
-      nokogiri (>= 1.2.0)
-      rack (>= 1.0)
-      rack-test (>= 0.5.3)
-    will_paginate (3.0.4)
+    yajl-ruby (1.1.0)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
-  annotate
-  bootstrap-sass
   coffee-rails (~> 3.2.1)
   factory_girl_rails
+  faye
   gravatar_image_tag
-  heroku-forward
   jquery-rails
-  money-rails (= 0.5.0)
-  pg
+  money-rails
   rails (= 3.2.3)
   rspec-rails
   sass-rails
-  spork-rails
+  sqlite3
   squeel
   state_machine
   thin (~> 1.3.1)
   uglifier (>= 1.0.3)
-  webrat
-  will_paginate (~> 3.0.0)

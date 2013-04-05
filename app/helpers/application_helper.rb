@@ -10,7 +10,6 @@ module ApplicationHelper
 		end
 	end
 
-
 	def logo_tag()
 		image_tag(	"#{SITE_NAME}_logo.png",
 					:alt => "#{SITE_NAME}", :class => "round")
@@ -39,4 +38,5 @@ module ApplicationHelper
 	def model_object_to_params_key(model_object)
 		model_object.class.to_s.underscore.split('/').join('_')
 	end
+
 end

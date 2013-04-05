@@ -1,5 +1,5 @@
 require 'rubygems'
-require 'spork'
+#require 'spork'
 require 'money'
 
 #uncomment the following line to use spork with the debugger
@@ -8,7 +8,7 @@ require 'money'
 INITIAL_BALANCE = Money.parse("$1000")
 VALUABLE_VALUE = Money.parse("$100")
 
-Spork.prefork do
+#Spork.prefork do
 
 	# Loading more in this block will cause your tests to run faster. However,
 	# if you change any configuration or code from libraries loaded here, you'll
@@ -247,9 +247,9 @@ Spork.prefork do
 		class Contracts::Bet::Friend < ActiveRecord::Base
 		end
 	end
-end
+#end
 
-Spork.each_run do
+#Spork.each_run do
   # This code will be run each time you run your specs.
 
-end # Spork.each_run
+#end # Spork.each_run

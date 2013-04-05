@@ -19,4 +19,5 @@ doc/api
 doc/app
 *.swp
 *~
+/config/database.yml
 .DS_Store

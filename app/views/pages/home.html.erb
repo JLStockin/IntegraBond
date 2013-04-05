@@ -1,21 +1,14 @@
 <!-- Video startup for home page splash -->
-<video id="splash_video" class="video-js vjs-default-skin"
-		height="264" width = "636"
-		preload="auto"
-        poster="http://video-js.zencoder.com/oceans-clip.png">
+<%= video_tag(	["/assets/oceans-clip.mp4",
+			   	"/assets/oceans-clip.webm",
+			   	"/assets/oceans-clip.ogg",
+			   	"/assets/oceans-clip.flv"],
+				:size => "636x264",
+				:poster => "oceans-clip.png",
+				:autoplay => "true") %>
 
-		<!-- multiple video formats  -->
-		<%= javascript_include_tag 'videoplayer' %>
-		<source src="http://video-js.zencoder.com/oceans-clip.webm" type='video/webm' />  
-		<source src="http://video-js.zencoder.com/oceans-clip.mp4" type='video/mp4' />  
-		<source src="http://video-js.zencoder.com/oceans-clip.ogv" type='video/ogg' />  
-		Your browser doesn't support the 'video' tag
-</video>
 <h1><br />Place a bet.</h1>
 <p>
-    See for yourself the power of a Transaction Execution Engine.
+    The following is a simple contract fed to the Transaction Execution Engine.
 </p>
 <%= link_to "Sign up now.", signup_path, :class => "signup_button round" %>
-
-<!-- Disabled code
--->

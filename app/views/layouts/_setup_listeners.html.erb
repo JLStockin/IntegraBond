@@ -1,0 +1,11 @@
+<% if signed_in? then %>
+	<%= javascript_tag do %>
+		var server = '<%= PUSH_SERVER %>';
+		var flash_channel =
+			'<%= j Contract.path_for_flash_channel(current_user) %>';
+		var update_channel = '<%= j request.path %>'
+
+		pushListener.registerFlashListener(server, flash_channel);
+		//pushListener.registerUpdateListener(server, update_channel);
+	<% end %>
+<% end %>

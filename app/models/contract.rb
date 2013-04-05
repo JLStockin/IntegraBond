@@ -36,6 +36,8 @@
 # To get the whole process started, Contract has some basic properties of a Goal
 # (CHILDREN (Goals), ARTIFACT, and EXPIRATIONS).
 #
+require 'net/http'
+
 class Contract < ActiveRecord::Base
 
 	self.table_name = "tranzactions"
@@ -443,36 +445,15 @@ class Contract < ActiveRecord::Base
 	end
 
 	#
-	# Tell a client that they should fetch changed_path, because data along
-	# that path has changed, or something needs input from the user.
-	#
-	def server_push(party, changed_path)
-
-	end
-
-	#
-	# Flash a message to the indicated Party.  Message should be obtained
-	# from ModelDescriptior.  Note that we can use the regular :flash data structure
-	# during the normal request/response cycle; this is just for server push.
-	#
-	def flash_party(party, message)
-		Rails.logger.info("#{party.contact.inspect} sent '#{message}'")
-	end
-
-	#
 	# Push a request to provision (create an Artifact)
 	#
 	# If request is successful, goal will be called back on method
-	# provision().
+	# provision() when the appropriate Artifact has been created.
 	#
 	def request_provision(goal)
 		return if goal.class.artifact().nil?
-		goal.class.available_to().each do |party_sym|
-			party_class = self.namespaced_class(party_sym)	
-			party = self.model_instance(party_sym)
-			Rails.logger.info("server push: party = #{party.inspect}, goal = #{goal.inspect}")
-			server_push( party, artifact_path_for(goal) ) unless party.nil?
-		end
+		# Note call up to controller layer!
+		broadcast_to_channel(Rails.application.routes.url_helpers.new_goal_artifact_path(goal.id))
 	end
 
 	#
@@ -490,8 +471,31 @@ class Contract < ActiveRecord::Base
 		end
 	end
 
-	def artifact_path_for(goal)
-		return "goals/#{goal.id}/artifacts/new"
+	########################################################################################
+	#
+	# Server Push Implementation.  The other half of this is the registeration process,
+	# which happens in the layout through javascript partials in views/shared.
+	#
+
+	# Update the flash message in the Party's current view
+	def flash_party(party, msg)
+		channel = self.class.path_for_flash_channel(party.contact.user)
+		message = { :channel => channel, :data => msg }.to_json
+		uri = URI.parse(PUSH_SERVER)
+		Net::HTTP.post_form(uri, :message => message)
+	end
+
+	# Broadcast to listeners registered for 'channel'.
+	def broadcast_to_channel(channel)
+		message = { :channel => channel, :data => channel }.to_json
+		uri = URI.parse(PUSH_SERVER)
+		Net::HTTP.post_form(uri, :message => message)
+	end
+
+	def self.path_for_flash_channel(user)
+		user_id = user.is_a?(User) ? user.id : user
+		channel = ['users', user_id, 'flash']
+		channel.join('/')
 	end
 
 	########################################################################################

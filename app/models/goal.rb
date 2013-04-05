@@ -61,7 +61,6 @@ StateMachine::Machine.class_eval do
 				goal.procreate()
 				true
 			else
-puts "===> ...executed #{goal.class}(#{artifact.class}); returned false"
 				false
 			end
 		end
